@@ -335,7 +335,9 @@ function pinviz.startplugin()
 			s.still = 0
 		end
 
-		if b.y > tbl.drain_y then
+		local in_drain_zone = b.y > tbl.drain_y
+		if tbl.drain_x then in_drain_zone = in_drain_zone and b.x >= tbl.drain_x[1] and b.x <= tbl.drain_x[2] end
+		if in_drain_zone then
 			s.state = 'outhole'
 			b.vx, b.vy = 0, 0
 			b.y = tbl.drain_y
