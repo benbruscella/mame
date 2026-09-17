@@ -1021,11 +1021,11 @@ Any state="9" items are not displayed and are only used for object alignment
 			<element ref="Key_X"><bounds x="186.7" y="97.2" width="9.0" height="9.0" /></element>
 
 			<!-- Slingshots: Sol 7 and 8 (decoder 11 and 12) -->
-			<element ref="Solenoid_SlingShot_Left" name="solenoid11"><bounds x="49.7" y="325.7" width="53.7" height="27.4" /></element>
-			<element ref="Switch_Leaf_Vertical" inputtag="X4" inputmask="0x10" id="pinviz:X4:0x10"><bounds x="72.6" y="334.9" width="8.0" height="9.0" /></element>
+			<element ref="Solenoid_SlingShot_Left" name="solenoid11" id="pinviz:X4:0x10"><bounds x="49.7" y="325.7" width="53.7" height="27.4" /></element>
+			<element ref="Switch_Leaf_Vertical" inputtag="X4" inputmask="0x10"><bounds x="72.6" y="334.9" width="8.0" height="9.0" /></element>
 			<element ref="Key_V"><bounds x="72.1" y="356.6" width="9.0" height="9.0" /></element>
-			<element ref="Solenoid_SlingShot_Right" name="solenoid12"><bounds x="196.7" y="325.7" width="53.7" height="27.4" /></element>
-			<element ref="Switch_Leaf_Vertical" inputtag="X4" inputmask="0x20" id="pinviz:X4:0x20"><bounds x="219.6" y="334.9" width="8.0" height="9.0" /></element>
+			<element ref="Solenoid_SlingShot_Right" name="solenoid12" id="pinviz:X4:0x20"><bounds x="196.7" y="325.7" width="53.7" height="27.4" /></element>
+			<element ref="Switch_Leaf_Vertical" inputtag="X4" inputmask="0x20"><bounds x="219.6" y="334.9" width="8.0" height="9.0" /></element>
 			<element ref="Key_C"><bounds x="219.1" y="356.6" width="9.0" height="9.0" /></element>
 
 			<!-- O R B S drop targets, reset by Sol 9 (decoder 0) -->

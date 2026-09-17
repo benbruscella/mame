@@ -111,8 +111,11 @@ return {
 		{ switch = { ':X4', 0x10 }, dir = 'u', len = 3.2, kick = 55 },
 		{ switch = { ':X4', 0x20 }, dir = 'd', len = 3.2, kick = 55 },
 		-- the "10 point rebound" rubbers along the lower rails
-		{ switch = { ':X4', 0x02 }, dir = 'd', len = 3.6, kick = 0 },
-		{ switch = { ':X4', 0x02 }, lay = ':2', dir = 'u', len = 3.6, kick = 0 },
+		-- these sit on the inlane rails, so they run along them; taking the direction
+		-- from the switch symbol instead laid them across the rail, and the acute
+		-- corner that made would trap the ball
+		{ switch = { ':X4', 0x02 }, angle = 19.4, len = 3.2, kick = 0 },
+		{ switch = { ':X4', 0x02 }, lay = ':2', angle = -19.4, len = 3.2, kick = 0 },
 	},
 
 	bumpers = {

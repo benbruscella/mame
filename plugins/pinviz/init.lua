@@ -214,6 +214,16 @@ function pinviz.startplugin()
 		local function segment_from(rc, f)
 			local dir, len = f.dir or 'h', f.len
 			local x0, y0, x1, y1
+			-- a rubber that lies along a rail is not the diagonal of the little switch
+			-- symbol that marks it, so a table may give the angle itself, in degrees
+			-- clockwise from the x axis, the same convention as the flipper angles
+			if f.angle then
+				local a = math.rad(f.angle)
+				local half = (len or math.sqrt((rc.x1 - rc.x0) ^ 2 + (rc.y1 - rc.y0) ^ 2)) / 2
+				f[1], f[2] = rc.cx - math.cos(a) * half, rc.cy - math.sin(a) * half
+				f[3], f[4] = rc.cx + math.cos(a) * half, rc.cy + math.sin(a) * half
+				return
+			end
 			if dir == 'v' then x0, y0, x1, y1 = rc.cx, rc.y0, rc.cx, rc.y1
 			elseif dir == 'd' then x0, y0, x1, y1 = rc.x0, rc.y0, rc.x1, rc.y1
 			elseif dir == 'u' then x0, y0, x1, y1 = rc.x0, rc.y1, rc.x1, rc.y0
@@ -739,6 +749,26 @@ function pinviz.startplugin()
 			end
 		else
 			s.idle_frames = 0
+		end
+
+		-- A ball at rest in open play is caught in a corner between two surfaces, each
+		-- holding it against the other. Real machines have a player to nudge them; here
+		-- a small push downhill frees it and the drain or the flippers take over.
+		if s.state == 'play' and s.ball then
+			local b = s.ball
+			if math.sqrt(b.vx * b.vx + b.vy * b.vy) < 3.0 then
+				s.stuck_frames = (s.stuck_frames or 0) + 1
+				if s.stuck_frames > 90 then
+					log(s, string.format('ball stuck at (%.1f, %.1f), nudged', b.x, b.y))
+					b.vy = b.vy + 18
+					b.vx = b.vx + (b.x < tbl.width / 2 and -9 or 9)
+					s.stuck_frames = 0
+				end
+			else
+				s.stuck_frames = 0
+			end
+		else
+			s.stuck_frames = 0
 		end
 
 		if s.state == 'shooter' then
