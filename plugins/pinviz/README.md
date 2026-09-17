@@ -14,6 +14,12 @@ the playfield panel.
 Keys: left and right Shift for the flippers (or whatever the table names),
 Space to plunge. The usual MAME keys coin up and start the game.
 
+These Bally layouts put three panels in one window: the playfield, the backbox,
+and an I/O test panel showing the whole switch matrix, lamp grid and solenoid row.
+The test panel is useful for poking switches from the keyboard on a machine that
+has no table, but next to a playing table it reads as a third machine, so it now
+starts hidden. MAME's video options can show it again.
+
 Over a layout the plugin keeps the playfield clear and shows one status line at
 the top of the picture. The full event log goes to the console instead, because a
 log panel on the picture covers the flippers and the outhole, which is the part
