@@ -65,9 +65,9 @@ function pinviz.startplugin()
 
 	local function log(s, msg)
 		local t = manager.machine.time.seconds + (manager.machine.time.msec / 1000)
-		local line = string.format('%6.2f  %s', t, msg)
+		local line = string.format('%5.1f %s', t, msg)
 		table.insert(s.events, 1, line)
-		if #s.events > 10 then table.remove(s.events) end
+		if #s.events > 14 then table.remove(s.events) end
 		if console_log then print('[pinviz] ' .. line) end
 	end
 
@@ -86,7 +86,8 @@ function pinviz.startplugin()
 		end
 		if p.frames == 0 then
 			p.field:set_value(1)
-			log(s, 'switch  ' .. (name or key))
+			log(s, 'sw  ' .. (name or key))
+			if name then s.flash[name] = 12 end
 		end
 		p.frames = SWITCH_FRAMES
 	end
@@ -124,7 +125,8 @@ function pinviz.startplugin()
 			if o.rose then
 				local idx = tonumber(name:match('^solenoid(%d+)$'))
 				local label = idx and s.tbl.solenoid_names and s.tbl.solenoid_names[idx]
-				log(s, 'solenoid ' .. (label or name))
+				log(s, 'sol ' .. (label or name))
+				if label then s.flash[label] = 12 end
 			end
 		end
 	end
@@ -381,6 +383,7 @@ function pinviz.startplugin()
 
 		update_outputs(s)
 		update_pulses(s)
+		for k, v in pairs(s.flash) do s.flash[k] = v - 1; if s.flash[k] <= 0 then s.flash[k] = nil end end
 		update_autopilot(s)
 		update_flippers(s)
 
@@ -466,32 +469,47 @@ function pinviz.startplugin()
 		local ui = manager.machine.render.ui_container
 		local target = manager.machine.render.ui_target
 
-		local C_BG, C_WALL, C_SLING, C_BUMPER = 0xF0101820, 0xFFB8B8B8, 0xFFFF9040, 0xFFFF5050
-		local C_TARGET, C_DROP, C_DOWN, C_SENSOR = 0xFF60FF60, 0xFF50C8FF, 0x5050C8FF, 0xFF9090FF
-		local C_FLIP, C_FLIP_OFF, C_BALL, C_TEXT = 0xFFFFE040, 0xFF806020, 0xFFFFFFFF, 0xFFE0E0E0
+		local C_PANEL, C_FELT, C_EDGE = 0xFF0A0D16, 0xFF12203A, 0xFF3A5A8A
+		local C_WALL, C_POST, C_SLING, C_BUMPER = 0xFFD0D8E8, 0xFF9AA4B8, 0xFFFF9A3C, 0xFFFF4A4A
+		local C_BUMPER_IN, C_TARGET, C_DROP, C_DOWN = 0xFF7A1A1A, 0xFF5CFF7A, 0xFF4AC8FF, 0x603A6A88
+		local C_SENSOR, C_GATE, C_FLIP, C_FLIP_OFF = 0xFF8C8CFF, 0xFF6A6AAA, 0xFFFFD93C, 0xFF6E5C24
+		local C_BALL, C_BALL_RIM, C_FLASH = 0xFFF4F4F4, 0xFF9AD0FF, 0xFFFFFFFF
+		local C_TEXT, C_TEXT_DIM, C_TITLE = 0xFFE6ECF5, 0xFF8F9BB0, 0xFFFFD93C
 
-		local function xf()
-			local W, H = target.width, target.height
-			if W <= 0 or H <= 0 then W, H = 640, 480 end
-			local avail_w, avail_h = 0.48 * W, 0.96 * H
-			local ppi = math.min(avail_w / tbl.width, avail_h / tbl.length)
-			local ox, oy = 0.01 * W, 0.02 * H
-			return function(x, y) return (ox + x * ppi) / W, (oy + y * ppi) / H end, ppi / W, ppi / H
-		end
+		local function flashing(name) return name and s.flash[name] end
 
 		return function()
-			local to, sx, sy = xf()
+			local W, H = target.width, target.height
+			if W <= 0 or H <= 0 then W, H = 640, 480 end
+			local panel_w = 0.5 * W
+			local margin = 0.02 * H
+			local ppi = math.min((panel_w * 0.72) / tbl.width, (H - 2 * margin) / tbl.length)
+			local ox, oy = margin, margin
+			local sx, sy = ppi / W, ppi / H
+			local function to(x, y) return (ox + x * ppi) / W, (oy + y * ppi) / H end
+
+			-- opaque panel over the layout, then the playfield
+			ui:draw_box(0, 0, 0.5, 1, C_PANEL, C_PANEL)
 			local ax, ay = to(0, 0)
 			local bx, by = to(tbl.width, tbl.length)
-			ui:draw_box(ax - 0.004, ay - 0.004, bx + 0.004, by + 0.004, C_BG, C_BG)
+			ui:draw_box(ax, ay, bx, by, C_EDGE, C_FELT)
 
 			local function line(x0, y0, x1, y1, c)
 				local ux0, uy0 = to(x0, y0)
 				local ux1, uy1 = to(x1, y1)
 				ui:draw_line(ux0, uy0, ux1, uy1, c)
 			end
+			local function thick(x0, y0, x1, y1, c, w)
+				local dx, dy = x1 - x0, y1 - y0
+				local len = math.sqrt(dx * dx + dy * dy)
+				if len < 1e-6 then return end
+				local nx, ny = -dy / len * w, dx / len * w
+				line(x0, y0, x1, y1, c)
+				line(x0 + nx, y0 + ny, x1 + nx, y1 + ny, c)
+				line(x0 - nx, y0 - ny, x1 - nx, y1 - ny, c)
+			end
 			local function circle(x, y, r, c, n)
-				n = n or 12
+				n = n or 14
 				local px, py
 				for i = 0, n do
 					local a = (i / n) * 2 * math.pi
@@ -500,41 +518,71 @@ function pinviz.startplugin()
 					px, py = qx, qy
 				end
 			end
+			local function disc(x, y, r, c, rows)
+				rows = rows or 8
+				for k = -rows, rows - 1 do
+					local y0, y1 = y + (k / rows) * r, y + ((k + 1) / rows) * r
+					local hw = r * math.sqrt(math.max(0, 1 - ((k + 0.5) / rows) ^ 2))
+					local ux0, uy0 = to(x - hw, y0)
+					local ux1, uy1 = to(x + hw, y1)
+					ui:draw_box(ux0, uy0, ux1, uy1, c, c)
+				end
+			end
 
 			for _, w in ipairs(tbl.walls) do line(w[1], w[2], w[3], w[4], C_WALL) end
-			for _, p in ipairs(tbl.posts or {}) do circle(p[1], p[2], p[3], C_WALL, 8) end
-			for _, g in ipairs(tbl.gates or {}) do line(g[1], g[2], g[3], g[4], C_SENSOR) end
-			for _, sl in ipairs(tbl.slings or {}) do line(sl[1], sl[2], sl[3], sl[4], C_SLING) end
-			for _, bp in ipairs(tbl.bumpers or {}) do circle(bp[1], bp[2], bp[3], C_BUMPER) end
-			for i, tg in ipairs(tbl.targets or {}) do
-				local c = tg.drop and (s.dropped[i] and C_DOWN or C_DROP) or C_TARGET
-				line(tg[1], tg[2], tg[3], tg[4], c)
+			for _, p in ipairs(tbl.posts or {}) do disc(p[1], p[2], p[3], C_POST, 4) end
+			for _, g in ipairs(tbl.gates or {}) do line(g[1], g[2], g[3], g[4], C_GATE) end
+
+			for _, sl in ipairs(tbl.slings or {}) do
+				thick(sl[1], sl[2], sl[3], sl[4], flashing(sl.name) and C_FLASH or C_SLING, 0.12)
 			end
-			for i, sn in ipairs(tbl.sensors or {}) do circle(sn[1], sn[2], sn[3], C_SENSOR, 8) end
-			for i, sc in ipairs(tbl.saucers or {}) do circle(sc[1], sc[2], sc[3], C_SLING, 10) end
+			for _, bp in ipairs(tbl.bumpers or {}) do
+				local hot = flashing(bp.name)
+				disc(bp[1], bp[2], bp[3], hot and C_BUMPER or C_BUMPER_IN, 10)
+				circle(bp[1], bp[2], bp[3], hot and C_FLASH or C_BUMPER, 16)
+				disc(bp[1], bp[2], bp[3] * 0.35, hot and C_FLASH or C_BUMPER, 4)
+			end
+			for i, tg in ipairs(tbl.targets or {}) do
+				local c
+				if tg.drop and s.dropped[i] then c = C_DOWN
+				elseif flashing(tg.name) then c = C_FLASH
+				else c = tg.drop and C_DROP or C_TARGET end
+				thick(tg[1], tg[2], tg[3], tg[4], c, 0.08)
+			end
+			for _, sn in ipairs(tbl.sensors or {}) do
+				circle(sn[1], sn[2], sn[3] * 0.6, flashing(sn.name) and C_FLASH or C_SENSOR, 10)
+			end
+			for _, sc in ipairs(tbl.saucers or {}) do
+				circle(sc[1], sc[2], sc[3], flashing(sc.name) and C_FLASH or C_SLING, 12)
+			end
 
 			for _, f in ipairs(s.flippers) do
 				local x0, y0, x1, y1 = flipper_ends(f)
 				local c = s.flippers_enabled and C_FLIP or C_FLIP_OFF
-				line(x0, y0, x1, y1, c)
-				line(x0, y0 + 0.25, x1, y1 + 0.25, c)
-				line(x0, y0 - 0.25, x1, y1 - 0.25, c)
+				thick(x0, y0, x1, y1, c, 0.22)
+				disc(x0, y0, 0.32, c, 4)
 			end
 
 			if s.ball then
 				local b = s.ball
-				local ux0, uy0 = to(b.x - b.r, b.y - b.r)
-				local ux1, uy1 = to(b.x + b.r, b.y + b.r)
-				ui:draw_box(ux0, uy0, ux1, uy1, C_BALL, C_BALL)
+				disc(b.x, b.y, b.r, C_BALL, 8)
+				circle(b.x, b.y, b.r, C_BALL_RIM, 12)
 			end
 
-			local hud = string.format('pinviz  %s   ball: %s   flippers: %s', tbl.name, s.state, s.flippers_enabled and 'on' or 'off')
-			ui:draw_text(ax, by + 0.006, hud, C_TEXT)
-			local y = ay + 0.005
-			for i = 1, math.min(#s.events, 8) do
-				ui:draw_text(ax + 0.005, y, s.events[i], i == 1 and C_TEXT or 0xA0C0C0C0)
-				y = y + 0.022
+			-- text column to the right of the table
+			local tx = bx + 0.012
+			local lh = 0.03
+			ui:draw_text(tx, ay, 'pinviz ' .. tbl.name, C_TITLE)
+			ui:draw_text(tx, ay + lh, 'ball ' .. s.state, C_TEXT)
+			ui:draw_text(tx, ay + 2 * lh, 'flippers ' .. (s.flippers_enabled and 'on' or 'off'), C_TEXT)
+			local y = ay + 4 * lh
+			for i = 1, math.min(#s.events, 14) do
+				local e = s.events[i]
+				if #e > 30 then e = e:sub(1, 30) end
+				ui:draw_text(tx, y, e, i == 1 and C_TEXT or C_TEXT_DIM)
+				y = y + lh
 			end
+			ui:draw_text(tx, by - lh, 'Shift flip  Space plunge', C_TEXT_DIM)
 		end
 	end
 
@@ -555,6 +603,7 @@ function pinviz.startplugin()
 			tbl = tbl, ball = nil, state = 'trough', events = {}, pulses = {}, outputs = {},
 			dropped = {}, in_sensor = {}, flippers = {}, auto_flip = {}, idle_frames = 0,
 			shooter_frames = 0, flippers_enabled = false, saucer_cooldown = 0, saucer_frames = 0, relay_frames = 0,
+			flash = {},
 		}
 		local input = manager.machine.input
 		for i, f in ipairs(tbl.flippers) do
