@@ -811,16 +811,15 @@ function pinviz.startplugin()
 
 			local lh = 0.03
 			if overlay then
-				-- a short event strip over the bottom of the picture
-				local n = math.min(#s.events, 4)
-				local top = by - (n + 1) * lh - 0.01
-				ui:draw_box(ax, top, bx, by, 0xB0101820, 0xB0101820)
-				ui:draw_text(ax + 0.005, top + 0.005, string.format('pinviz  ball %s  flippers %s', s.state, s.flippers_enabled and 'on' or 'off'), C_TITLE)
-				for i = 1, n do
-					local e = s.events[i]
-					if #e > 34 then e = e:sub(1, 34) end
-					ui:draw_text(ax + 0.005, top + 0.005 + i * lh, e, i == 1 and C_TEXT or C_TEXT_DIM)
-				end
+				-- One compact line at the very top of the picture. The playfield itself is
+				-- left clear: a log panel over the bottom would cover the flippers and the
+				-- outhole, which is the part worth watching. PINVIZ_LOG=1 prints the full
+				-- log to the console.
+				local e = s.events[1] or ''
+				if #e > 30 then e = e:sub(1, 30) end
+				local text = string.format('%s  %s  %s', s.state, s.flippers_enabled and 'flippers on' or 'flippers off', e)
+				ui:draw_box(ax, ay, bx, ay + lh, 0xB0101820, 0xB0101820)
+				ui:draw_text(ax + 0.004, ay + 0.004, text, C_TEXT)
 			else
 				-- text column to the right of the table
 				local tx = bx + 0.012

@@ -14,6 +14,11 @@ the playfield panel.
 Keys: left and right Shift for the flippers (or whatever the table names),
 Space to plunge. The usual MAME keys coin up and start the game.
 
+Over a layout the plugin keeps the playfield clear and shows one status line at
+the top of the picture. The full event log goes to the console instead, because a
+log panel on the picture covers the flippers and the outhole, which is the part
+worth watching.
+
 Environment variables:
 
 - `PINVIZ_AUTOPILOT=1` plays by itself, which turns the plugin into a driver
