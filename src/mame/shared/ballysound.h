@@ -37,6 +37,7 @@ DECLARE_DEVICE_TYPE(BALLY_SOUNDS_PLUS,      bally_sounds_plus_device)
 DECLARE_DEVICE_TYPE(BALLY_CHEAP_SQUEAK,     bally_cheap_squeak_device)
 DECLARE_DEVICE_TYPE(BALLY_SQUAWK_N_TALK,    bally_squawk_n_talk_device)
 DECLARE_DEVICE_TYPE(BALLY_SQUAWK_N_TALK_AY, bally_squawk_n_talk_ay_device)
+DECLARE_DEVICE_TYPE(BALLY_SAY_IT_AGAIN,      bally_say_it_again_device)
 
 
 //**************************************************************************
@@ -338,5 +339,49 @@ private:
 	void update_ay_bus();
 };
 
+
+
+// ======================> bally_say_it_again_device
+
+// AS-2518-81 "Say It Again" echo board, used with the Squawk & Talk on Centaur and
+// Centaur II. Audio from the sound board passes through a Reticon SAD4096 bucket
+// brigade delay line clocked by a CD4046 PLL, and the delayed signal is mixed back
+// into the input through the "Regen" pot, which sets how many times the echo repeats.
+// The "Bias" pot only trims distortion and is not modelled.
+class bally_say_it_again_device : public device_t, public device_sound_interface
+{
+public:
+	bally_say_it_again_device(
+			const machine_config &mconfig,
+			const char *tag,
+			device_t *owner,
+			uint32_t clock = 0);
+
+	// delay of one pass through the BBD, in milliseconds
+	bally_say_it_again_device &set_delay_ms(float ms);
+	// feedback of the delayed signal into the input, 0 to just under 1
+	bally_say_it_again_device &set_regen(float regen);
+	// level of the delayed signal in the output
+	bally_say_it_again_device &set_wet(float wet);
+
+protected:
+	// device-level overrides
+	virtual void device_start() override ATTR_COLD;
+	virtual void device_reset() override ATTR_COLD;
+
+	// sound stream update overrides
+	virtual void sound_stream_update(sound_stream &stream) override;
+
+private:
+	static constexpr uint32_t BUFFER_SIZE = 1 << 16;    // over a second at 48 kHz, delay never exceeds that
+
+	sound_stream *m_stream;
+	std::vector<sound_stream::sample_t> m_buffer;
+	uint32_t m_pos;
+	sound_stream::sample_t m_lowpass;
+	float m_delay_ms;
+	float m_regen;
+	float m_wet;
+};
 
 #endif // MAME_SHARED_BALLYSOUND_H

@@ -45,7 +45,7 @@ Fireball II                      1219        AS-3107-3
 Eight Ball Deluxe                1220        AS-3107-2
 Embryon                          1222        AS-3107-4
 Fathom                           1233        AS-3107-5
-Centaur                          1239        AS-3107-7
+Centaur                          1239        AS-3107-7 + AS-2518-81 (Say It Again echo)
 Medusa                           1245        AS-3107-6
 Vector                           1247        AS-3107-9
 Elektra                          1248        AS-3107-8
@@ -189,6 +189,7 @@ public:
 	void cheap_squeak(machine_config &config) ATTR_COLD;
 	void squawk_n_talk(machine_config &config) ATTR_COLD;
 	void squawk_n_talk_ay(machine_config &config) ATTR_COLD;
+	void squawk_n_talk_sia(machine_config &config) ATTR_COLD;
 
 protected:
 	typedef uint8_t solenoid_feature_data[20][4];
@@ -224,6 +225,9 @@ protected:
 		, m_cheap_squeak(*this, "cheap_squeak")
 		, m_squawk_n_talk(*this, "squawk_n_talk")
 		, m_squawk_n_talk_ay(*this, "squawk_n_talk_ay")
+		, m_say_it_again(*this, "say_it_again")
+		, m_io_sia_regen(*this, "SIA_REGEN")
+		, m_io_sia_delay(*this, "SIA_DELAY")
 		, m_sound_select_handler(*this)
 		, m_sound_int_handler(*this)
 	{ }
@@ -299,6 +303,9 @@ private:
 	optional_device<bally_cheap_squeak_device> m_cheap_squeak;
 	optional_device<bally_squawk_n_talk_device> m_squawk_n_talk;
 	optional_device<bally_squawk_n_talk_ay_device> m_squawk_n_talk_ay;
+	optional_device<bally_say_it_again_device> m_say_it_again;
+	optional_ioport m_io_sia_regen;
+	optional_ioport m_io_sia_delay;
 	devcb_write8 m_sound_select_handler;
 	devcb_write_line m_sound_int_handler;
 };
@@ -1012,6 +1019,13 @@ static INPUT_PORTS_START( centaur )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Right Thumper Bumper") PORT_CODE(KEYCODE_X)
 	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Left Thumper Bumper") PORT_CODE(KEYCODE_Z)
 
+	// Say It Again board pots. Regen sets how many times the echo repeats; the delay
+	// comes from the CD4046 PLL clocking the SAD4096 and is roughly 50 to 450 ms.
+	PORT_START("SIA_REGEN")
+	PORT_ADJUSTER( 45, "Say It Again - Regen" )
+	PORT_START("SIA_DELAY")
+	PORT_ADJUSTER( 30, "Say It Again - Delay" )
+
 	PORT_START("X5")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Inline Drop Target #1") PORT_CODE(KEYCODE_P)
 	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Inline Drop Target #2") PORT_CODE(KEYCODE_0)
@@ -1445,6 +1459,12 @@ TIMER_DEVICE_CALLBACK_MEMBER( by35_state::timer_z_freq )
 
 	m_pia_u10->cb1_w(true);
 
+	if (m_say_it_again.found())
+	{
+		m_say_it_again->set_regen(m_io_sia_regen->read() / 100.0f);
+		m_say_it_again->set_delay_ms(50.0f + 4.0f * m_io_sia_delay->read());
+	}
+
 	/*** Zero Crossing - power to all Lamp SCRs is cut off and reset ***/
 
 	std::fill(std::begin(m_lamps), std::end(m_lamps), 0);
@@ -1721,6 +1741,20 @@ void by35_state::squawk_n_talk(machine_config &config)
 	BALLY_SQUAWK_N_TALK(config, m_squawk_n_talk);
 	SPEAKER(config, "mono").front_center();
 	m_squawk_n_talk->add_route(ALL_OUTPUTS, "mono", 1.00);
+
+	m_sound_select_handler.bind().set(m_squawk_n_talk, FUNC(bally_squawk_n_talk_device::sound_select));
+	m_sound_int_handler.bind().set(m_squawk_n_talk, FUNC(bally_squawk_n_talk_device::sound_int));
+}
+
+void by35_state::squawk_n_talk_sia(machine_config &config)
+{
+	by35(config);
+
+	BALLY_SQUAWK_N_TALK(config, m_squawk_n_talk);
+	BALLY_SAY_IT_AGAIN(config, m_say_it_again);
+	SPEAKER(config, "mono").front_center();
+	m_squawk_n_talk->add_route(ALL_OUTPUTS, m_say_it_again, 1.00);
+	m_say_it_again->add_route(ALL_OUTPUTS, "mono", 1.00);
 
 	m_sound_select_handler.bind().set(m_squawk_n_talk, FUNC(bally_squawk_n_talk_device::sound_select));
 	m_sound_int_handler.bind().set(m_squawk_n_talk, FUNC(bally_squawk_n_talk_device::sound_int));
@@ -3045,7 +3079,7 @@ GAME( 1981, eballdlx,   0,        squawk_n_talk_ay, by35_os5x, by35_state, init_
 GAME( 1981, eballd14,   eballdlx, squawk_n_talk_ay, by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Eight Ball Deluxe (rev. 14)",           MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
 GAME( 1981, embryon,    0,        squawk_n_talk,    by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Embryon",                               MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
 GAME( 1981, fathom,     0,        squawk_n_talk,    by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Fathom",                                MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
-GAME( 1981, centaur,    0,        squawk_n_talk,    centaur,   centaur_state, init_by35_7, ROT0, "Bally", "Centaur",                            MACHINE_MECHANICAL | MACHINE_SUPPORTS_SAVE )
+GAME( 1981, centaur,    0,        squawk_n_talk_sia, centaur,  centaur_state, init_by35_7, ROT0, "Bally", "Centaur",                            MACHINE_MECHANICAL | MACHINE_SUPPORTS_SAVE )
 GAME( 1981, medusa,     0,        squawk_n_talk,    by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Medusa",                                MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
 GAME( 1982, vector,     0,        squawk_n_talk_ay, by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Vector",                                MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
 GAME( 1981, elektra,    0,        squawk_n_talk_ay, by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Elektra",                               MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
