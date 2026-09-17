@@ -36,6 +36,9 @@ local walls = {
 	{ 1.9, 27.0, 1.9, 36.0 }, { mirror(1.9), 27.0, mirror(1.9), 36.0 },
 	{ 3.9, 29.5, 3.9, 31.4 }, { mirror(3.9), 29.5, mirror(3.9), 31.4 },
 	{ 3.9, 35.4, 5.6, 35.4 }, { mirror(3.9), 35.4, mirror(5.6), 35.4 },
+	-- inlane rails from the bottom of the outlane dividers onto the flippers; a ball
+	-- in the inlane is fed to the flipper, a ball in the outlane drops past it
+	{ 1.9, 36.0, 6.4, 38.6 }, { mirror(1.9), 36.0, mirror(6.4), 38.6 },
 }
 for _, s in ipairs(arc) do walls[#walls + 1] = s end
 

@@ -49,8 +49,9 @@ local more = {
 	{ mirror(4.2), 25.6, mirror(4.0), 27.4 }, { mirror(4.0), 27.4, mirror(4.0), 28.2 },
 	-- sling undersides
 	{ 4.3, 31.2, 5.4, 31.2 }, { mirror(4.3), 31.2, mirror(5.4), 31.2 },
-	-- lower guides from the inlanes down to the flippers
-	{ 4.0, 31.2, 5.8, 33.6 }, { mirror(4.0), 31.2, mirror(5.8), 33.6 },
+	-- inlane rails from the bottom of the outlane dividers onto the flippers; a ball
+	-- in the inlane is fed to the flipper, a ball in the outlane drops past it
+	{ 2.4, 32.4, 5.8, 33.6 }, { mirror(2.4), 32.4, mirror(5.8), 33.6 },
 	-- apron edges below the outlanes
 	{ 0, 34.0, 4.6, 37.6 }, { LANE, 34.0, mirror(4.6), 37.6 },
 }
@@ -105,9 +106,9 @@ return {
 	slings = {
 		{ 4.3, 28.2, 5.4, 31.2, kick = 55, switch = { ':X4', 0x10 }, name = 'Left Slingshot' },
 		{ mirror(4.3), 28.2, mirror(5.4), 31.2, kick = 55, switch = { ':X4', 0x20 }, name = 'Right Slingshot' },
-		-- rubbers on the lower guides, the "10 point rebound" switches
-		{ 4.0, 31.2, 5.8, 33.6, kick = 25, switch = { ':X4', 0x02 }, name = '10 Points Rebound' },
-		{ mirror(4.0), 31.2, mirror(5.8), 33.6, kick = 25, switch = { ':X4', 0x02 }, name = '10 Points Rebound' },
+		-- the "10 point rebound" switches sit on the rubbers along the lower rails
+		{ 2.4, 32.4, 5.8, 33.6, kick = 0, switch = { ':X4', 0x02 }, name = '10 Points Rebound' },
+		{ mirror(2.4), 32.4, mirror(5.8), 33.6, kick = 0, switch = { ':X4', 0x02 }, name = '10 Points Rebound' },
 	},
 
 	bumpers = {
