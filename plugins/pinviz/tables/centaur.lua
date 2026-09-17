@@ -17,7 +17,7 @@
 -- solenoid table in src/mame/pinball/by35.cpp for the manual numbering.
 
 local W, L = 20.25, 42.0
-local LANE = 19.0             -- left edge of the shooter lane
+local LANE = 18.5             -- left edge of the shooter lane
 local CX = 9.5                -- playfield centre line, excluding the shooter lane
 
 local function mirror(x) return 2 * CX - x end
@@ -33,20 +33,20 @@ local more = {
 	{ 0, 6.0, 0, L }, { W, 5.5, W, L },
 	-- shooter lane wall
 	{ LANE, 11.5, LANE, L },
-	-- Queen's Chamber lane on the far left: right hand wall, open at the bottom
-	{ 2.7, 1.6, 2.7, 20.6 },
+	-- Queen's Chamber lane on the far left: right hand wall, open at the bottom. Below
+	-- it the far left channel continues down into the left outlane; the inlane joins
+	-- from the right, so a shot up the left side goes on up into the chamber.
+	{ 2.9, 1.4, 2.9, 19.7 },
 	-- top lane guides, three lanes between four guides
 	{ 5.6, 3.4, 5.6, 6.2 }, { 7.6, 3.2, 7.6, 6.0 }, { 9.7, 3.0, 9.7, 5.8 }, { 11.8, 2.9, 11.8, 5.7 },
-	-- orb release tunnel / bonus lane on the right: inner wall
-	{ 16.8, 3.6, 16.8, 13.4 },
-	-- wall behind the right four-bank
-	{ 18.2, 16.0, 18.2, 21.2 },
-	-- outlane dividers and inlane guides
-	{ 2.0, 27.4, 2.0, 32.4 }, { mirror(2.0), 27.4, mirror(2.0), 32.4 },
-	{ 4.0, 27.4, 4.0, 28.2 }, { mirror(4.0), 27.4, mirror(4.0), 28.2 },
-	-- outlane dividers and inlane guides
-	{ 2.0, 27.4, 2.0, 32.4 }, { mirror(2.0), 27.4, mirror(2.0), 32.4 },
-	{ 4.0, 27.4, 4.0, 28.2 }, { mirror(4.0), 27.4, mirror(4.0), 28.2 },
+	-- orb release tunnel / bonus lane on the right: inner wall, then the rail that
+	-- carries the ball on down behind the four-bank into the right inlane
+	{ 16.9, 4.9, 16.9, 14.7 },
+	{ 18.0, 14.7, 18.0, 25.6 },
+	-- outlane dividers and inlane rails, from the lane lights down to the slings
+	{ 2.4, 25.6, 2.4, 32.4 }, { mirror(2.4), 25.6, mirror(2.4), 32.4 },
+	{ 4.2, 25.6, 4.0, 27.4 }, { 4.0, 27.4, 4.0, 28.2 },
+	{ mirror(4.2), 25.6, mirror(4.0), 27.4 }, { mirror(4.0), 27.4, mirror(4.0), 28.2 },
 	-- sling undersides
 	{ 4.3, 31.2, 5.4, 31.2 }, { mirror(4.3), 31.2, mirror(5.4), 31.2 },
 	-- lower guides from the inlanes down to the flippers
@@ -72,7 +72,7 @@ local function right4(y, mask, name)
 end
 -- inline drop targets across the Queen's Chamber lane, #1 nearest the entrance
 local function inline(y, mask, name)
-	return { 0.7, y, 2.7, y, switch = { ':X5', mask }, name = name, drop = true, reset = 'solenoid7' }
+	return { 0.85, y, 2.9, y, switch = { ':X5', mask }, name = name, drop = true, reset = 'solenoid7' }
 end
 
 return {
@@ -85,7 +85,7 @@ return {
 
 	walls = walls,
 	-- one way gate flap over the top of the shooter lane
-	gates = { { W, 8.4, LANE - 0.4, 10.0 } },
+	gates = { { W, 8.4, LANE - 0.4, 10.4 } },
 	posts = posts,
 
 	serve_solenoids = { 'solenoid13', 'solenoid14' },   -- ball kick to playfield, ball release
@@ -131,9 +131,9 @@ return {
 		inline(9.4, 0x02, 'Inline Drop Target #2'),
 		inline(7.4, 0x04, 'Inline Drop Target #3'),
 		inline(5.5, 0x08, 'Inline Drop Target #4'),
-		{ 0.7, 3.6, 2.7, 3.6, switch = { ':X2', 0x08 }, name = 'Inline Back Target' },
+		{ 0.85, 3.6, 2.9, 3.6, switch = { ':X2', 0x08 }, name = 'Inline Back Target' },
 		-- stand-up targets
-		{ 2.7, 17.2, 2.7, 18.3, switch = { ':X2', 0x20 }, name = 'Reset 1-4 Targets Target' },
+		{ 3.4, 19.3, 4.2, 20.1, switch = { ':X2', 0x20 }, name = 'Reset 1-4 Targets Target' },
 		{ 13.6, 6.8, 14.4, 7.6, switch = { ':X2', 0x80 }, name = 'Top Spot 1-4 Target' },
 		{ 16.8, 12.0, 17.3, 13.0, switch = { ':X2', 0x04 }, name = 'ORBS Right Lane Target' },
 		{ 9.2, 11.2, 10.4, 11.0, switch = { ':X1', 0x08 }, name = 'ORBS Back Targets' },
@@ -145,10 +145,10 @@ return {
 		{ 10.7, 4.4, 0.7, switch = { ':X0', 0x04 }, name = 'Top Lane Right' },
 		{ 3.4, 7.4, 0.6, switch = { ':X1', 0x08 }, name = 'Top Left Rollover Button' },
 		{ 1.3, 24.2, 0.6, switch = { ':X2', 0x02 }, name = 'Left Side Rollover Button' },
-		{ 1.0, 29.6, 0.7, switch = { ':X5', 0x80 }, name = 'Left Outlane' },
-		{ 3.0, 29.6, 0.7, switch = { ':X5', 0x40 }, name = 'Left Return Lane' },
-		{ mirror(1.0), 29.6, 0.7, switch = { ':X5', 0x10 }, name = 'Right Outlane' },
-		{ mirror(3.0), 29.6, 0.7, switch = { ':X5', 0x20 }, name = 'Right Return Lane' },
+		{ 1.2, 29.0, 0.7, switch = { ':X5', 0x80 }, name = 'Left Outlane' },
+		{ 3.2, 29.0, 0.7, switch = { ':X5', 0x40 }, name = 'Left Return Lane' },
+		{ mirror(1.2), 29.0, 0.7, switch = { ':X5', 0x10 }, name = 'Right Outlane' },
+		{ mirror(3.2), 29.0, 0.7, switch = { ':X5', 0x20 }, name = 'Right Return Lane' },
 	},
 
 	solenoid_names = {
