@@ -157,6 +157,13 @@ function pinviz.startplugin()
 	-- switch is. The table then only has to say what each switch is.
 	-- --------------------------------------------------------------------
 
+	-- width to height ratio of the layout view as MAME is showing it
+	local function view_aspect()
+		local ok, a = pcall(function() return manager.machine.render.ui_target.current_view.effective_aspect end)
+		if ok and a and a > 0 then return a end
+		return 0
+	end
+
 	local function layout_reader(tbl)
 		local view = manager.machine.render.ui_target.current_view
 		if not view then return nil end
@@ -176,7 +183,7 @@ function pinviz.startplugin()
 		-- the panel is narrower than the table is.
 		local lw = tbl.lay_width or tbl.width
 		local ll = tbl.lay_length or tbl.length
-		local r = { x0 = x0, xw = xw, y0 = y0, yh = yh }
+		local r = { x0 = x0, xw = xw, y0 = y0, yh = yh, lw = lw, ll = ll }
 		-- playfield inches to UI coordinates, matching the layout's own stretch
 		function r.to_ui(x, y) return x0 + x / lw * xw, y0 + y / ll * yh end
 		-- rectangle of a switch item in inches: centre and half sizes
@@ -712,15 +719,38 @@ function pinviz.startplugin()
 			if W <= 0 or H <= 0 then W, H = 640, 480 end
 			local overlay = s.lay ~= nil
 			local to
+			-- radii in window coordinates that come out circular on screen: a normalised
+			-- unit spans W pixels across and H pixels down, so the x radius has to be the
+			-- y radius times H/W
+			local circular
 			if overlay then
-				-- draw straight onto the layout's playfield picture
-				to = s.lay.to_ui
+				-- The layout's item bounds are normalised to the view, but draw_box and
+				-- draw_line take coordinates normalised to the window. MAME letterboxes the
+				-- view inside the window when their aspects differ, so without this
+				-- correction the overlay is drawn offset by up to half a letterbox bar and
+				-- only a window with the view's own aspect lines up.
+				local va = view_aspect()
+				local ta = W / H
+				local sx, sy, ox, oy = 1, 1, 0, 0
+				if va > 0 and ta > va then sx = va / ta; ox = (1 - sx) / 2
+				elseif va > 0 and ta < va then sy = ta / va; oy = (1 - sy) / 2 end
+				local raw = s.lay.to_ui
+				to = function(x, y)
+					local ux, uy = raw(x, y)
+					return ox + ux * sx, oy + uy * sy
+				end
+				local per_inch_y = s.lay.yh * sy / s.lay.ll
+				circular = function(inches)
+					local ry = inches * per_inch_y
+					return ry * H / W, ry
+				end
 			else
 				local panel_w = 0.5 * W
 				local margin = 0.02 * H
 				local ppi = math.min((panel_w * 0.72) / tbl.width, (H - 2 * margin) / tbl.length)
 				local ox, oy = margin, margin
 				to = function(x, y) return (ox + x * ppi) / W, (oy + y * ppi) / H end
+				circular = function(inches) return inches * ppi / W, inches * ppi / H end
 			end
 
 			local ax, ay = to(0, 0)
@@ -747,22 +777,25 @@ function pinviz.startplugin()
 			end
 			local function circle(x, y, r, c, n)
 				n = n or 14
+				local cx, cy = to(x, y)
+				local rx, ry = circular(r)
 				local px, py
 				for i = 0, n do
 					local a = (i / n) * 2 * math.pi
-					local qx, qy = x + r * math.cos(a), y + r * math.sin(a)
-					if px then line(px, py, qx, qy, c) end
+					local qx, qy = cx + rx * math.cos(a), cy + ry * math.sin(a)
+					if px then ui:draw_line(px, py, qx, qy, c) end
 					px, py = qx, qy
 				end
 			end
 			local function disc(x, y, r, c, rows)
-				rows = rows or 8
+				rows = rows or 10
+				local cx, cy = to(x, y)
+				local rx, ry = circular(r)
 				for k = -rows, rows - 1 do
-					local y0, y1 = y + (k / rows) * r, y + ((k + 1) / rows) * r
-					local hw = r * math.sqrt(math.max(0, 1 - ((k + 0.5) / rows) ^ 2))
-					local ux0, uy0 = to(x - hw, y0)
-					local ux1, uy1 = to(x + hw, y1)
-					ui:draw_box(ux0, uy0, ux1, uy1, c, c)
+					local wy0 = cy + (k / rows) * ry
+					local wy1 = cy + ((k + 1) / rows) * ry
+					local hw = rx * math.sqrt(math.max(0, 1 - ((k + 0.5) / rows) ^ 2))
+					ui:draw_box(cx - hw, wy0, cx + hw, wy1, c, c)
 				end
 			end
 
