@@ -35,9 +35,14 @@ function pinviz.startplugin()
 	local autopilot = os.getenv('PINVIZ_AUTOPILOT') == '1'
 	local fliptest = tonumber(os.getenv('PINVIZ_FLIPTEST') or '0')   -- ball speed for the flipper test, 0 = off
 	local console_log = os.getenv('PINVIZ_LOG') == '1'
+	-- the flipper test drops the ball at five points along the bat; set to 0 to drop it
+	-- at one point, which makes a run repeatable and any spread left the physics
+	local flipspread = os.getenv('PINVIZ_FLIPSPREAD') ~= '0'
 
 	local SUBSTEPS = 12
 	local FLIPPER_THICKNESS = 0.22   -- half width of the bat, inches
+	local FLIPPER_RESTITUTION = 0.35 -- flipper rubber, bouncier than a wall
+	local FLIPPER_FRICTION = 0.12    -- drag along the rubber, gives a ball met off centre some curve
 	local FRAME_DT = 1 / 60
 	local SWITCH_FRAMES = 5     -- how long a hit holds a matrix switch closed
 	local BALL_RESTITUTION_MIN_SPEED = 2.0
@@ -424,28 +429,62 @@ function pinviz.startplugin()
 		for i, f in ipairs(s.flippers) do
 			local x0, y0, x1, y1 = flipper_ends(f)
 			local reach = b.r + FLIPPER_THICKNESS
-			-- swept test: closest distance between the ball's path this substep and the
-			-- bat. This catches a fast ball or a fast bat that a point test would miss.
-			local dist, rx, ry, t, qx, qy = seg_seg_closest(px, py, b.x, b.y, x0, y0, x1, y1)
-			if dist < reach then
-				-- put the ball at the contact, just off the bat on the approach side
-				local nx, ny = qx - rx, qy - ry
+			local dx, dy = x1 - x0, y1 - y0
+			local l2 = dx * dx + dy * dy
+			local hx, hy, hrx, hry, ht    -- contact: ball point, bat point, position along the bat
+
+			-- the usual case, the ball where it is now against the bat where it is now,
+			-- resolved from its own position like any other surface
+			local tt = l2 > 1e-9 and ((b.x - x0) * dx + (b.y - y0) * dy) / l2 or 0
+			tt = math.max(0, math.min(1, tt))
+			local crx, cry = x0 + tt * dx, y0 + tt * dy
+			if math.sqrt((b.x - crx) ^ 2 + (b.y - cry) ^ 2) < reach then
+				hx, hy, hrx, hry, ht = b.x, b.y, crx, cry, tt
+			else
+				-- nothing touching now, so look for a contact this substep stepped over:
+				-- a fast ball through the bat, or a fast bat past the ball. The bat is
+				-- tested where it started as well as where it ended. Only this case uses
+				-- the ball's path, because only here has the ball gone somewhere it
+				-- should not have reached.
+				local sd, srx, sry, st, sqx, sqy = seg_seg_closest(px, py, b.x, b.y, x0, y0, x1, y1)
+				if f.prev_angle ~= f.angle then
+					local pa = math.rad(f.prev_angle)
+					local ex, ey = f.pivot[1] + f.length * math.cos(pa), f.pivot[2] + f.length * math.sin(pa)
+					local d2, rx2, ry2, t2, qx2, qy2 = seg_seg_closest(px, py, b.x, b.y, f.pivot[1], f.pivot[2], ex, ey)
+					if d2 < sd then sd, srx, sry, st, sqx, sqy = d2, rx2, ry2, t2, qx2, qy2 end
+				end
+				if sd < reach then hx, hy, hrx, hry, ht = sqx, sqy, srx, sry, st end
+			end
+
+			if hx then
+				-- put the ball just off the bat on the approach side
+				local nx, ny = hx - hrx, hy - hry
 				local nl = math.sqrt(nx * nx + ny * ny)
 				if nl < 1e-6 then
-					local dx, dy = x1 - x0, y1 - y0; local l = math.sqrt(dx * dx + dy * dy)
+					local l = math.sqrt(l2)
 					nx, ny = -dy / l, dx / l
-					if (px - rx) * nx + (py - ry) * ny < 0 then nx, ny = -nx, -ny end
+					if (px - hrx) * nx + (py - hry) * ny < 0 then nx, ny = -nx, -ny end
 				else nx, ny = nx / nl, ny / nl end
-				b.x, b.y = rx + nx * reach, ry + ny * reach
-				-- reflect, then add the bat's surface velocity at the contact
-				local vn = b.vx * nx + b.vy * ny
-				if vn < 0 then b.vx = b.vx - 1.35 * vn * nx; b.vy = b.vy - 1.35 * vn * ny end
-				if f.omega ~= 0 then
-					local a = math.rad(f.angle)
-					local d = t * f.length
-					local svx, svy = -f.omega * d * math.sin(a), f.omega * d * math.cos(a)
-					local sn = svx * nx + svy * ny
-					if sn > 0 then b.vx = b.vx + 1.4 * sn * nx; b.vy = b.vy + 1.4 * sn * ny end
+				b.x, b.y = hrx + nx * reach, hry + ny * reach
+				-- One impulse, taken against the ball's velocity relative to the bat
+				-- surface at the contact: a bat sweeping into the ball throws it, a bat
+				-- at rest only bounces it, and nothing is added on top. Because the ball
+				-- then leaves faster than the bat, the remaining substeps of a long flip
+				-- find it moving away and leave it alone instead of pumping it.
+				local d = ht * f.length
+				local a = math.rad(f.angle)
+				local svx, svy = -f.omega * d * math.sin(a), f.omega * d * math.cos(a)
+				local rvx, rvy = b.vx - svx, b.vy - svy
+				local vn = rvx * nx + rvy * ny
+				if vn < 0 then
+					b.vx = b.vx - (1 + FLIPPER_RESTITUTION) * vn * nx
+					b.vy = b.vy - (1 + FLIPPER_RESTITUTION) * vn * ny
+					-- a little drag along the rubber, so a ball met off centre picks up
+					-- some sideways speed rather than sliding free
+					local tx, ty = -ny, nx
+					local vt = rvx * tx + rvy * ty
+					b.vx = b.vx - FLIPPER_FRICTION * vt * tx
+					b.vy = b.vy - FLIPPER_FRICTION * vt * ty
 				end
 			end
 		end
@@ -547,7 +586,9 @@ function pinviz.startplugin()
 	-- --------------------------------------------------------------------
 
 	local function update_flippers(s)
-		local enabled = s.tbl.flipper_enable == nil or output_on(s, s.tbl.flipper_enable)
+		-- the flipper test drives the bat itself, so it does not wait for the game to
+		-- energise the relay
+		local enabled = fliptest > 0 or s.tbl.flipper_enable == nil or output_on(s, s.tbl.flipper_enable)
 		local input = manager.machine.input
 		for i, f in ipairs(s.flippers) do
 			local pressed = enabled and (input:code_pressed(f.code) or ((autopilot or fliptest > 0) and s.auto_flip[i] > 0))
@@ -561,28 +602,53 @@ function pinviz.startplugin()
 	-- arrives, and count whether it was hit or passed through the bat.
 	local function update_fliptest(s)
 		local ft = s.ft
-		if not ft then ft = { phase = 0, frames = 0, hits = 0, through = 0, trials = 0 }; s.ft = ft end
+		if not ft then ft = { phase = 0, frames = 0, hits = 0, through = 0, trials = 0, exits = {}, angs = {} }; s.ft = ft end
 		ft.frames = ft.frames + 1
 		local f = s.flippers[1]
 		if ft.phase == 0 and ft.frames > 60 then
-			new_ball(s, f.pivot[1] + 1.6 + (ft.trials % 5) * 0.3, f.pivot[2] - 6, 0, fliptest)
+			new_ball(s, f.pivot[1] + 1.6 + (flipspread and (ft.trials % 5) * 0.3 or 0.6), f.pivot[2] - 6, 0, fliptest)
 			s.state = 'play'; s.flippers_enabled = true; ft.phase = 1; ft.frames = 0
 		elseif ft.phase == 1 then
-			if s.ball.y > f.pivot[2] - 1.2 then s.auto_flip[1] = 10; ft.phase = 2; ft.frames = 0 end
+			-- flip early enough that the bat is mid sweep when the ball arrives, which
+			-- is what a player does; the lead scales with the ball's speed
+			if s.ball.y > f.pivot[2] - 1.2 - fliptest * 0.020 then s.auto_flip[1] = 10; ft.phase = 2; ft.frames = 0 end
 			if ft.frames > 120 then ft.phase = 3 end
 		elseif ft.phase == 2 then
+			-- the shot is whatever the bat threw: record the ball the moment it is
+			-- travelling back up the table, so exits can be compared trial to trial
+			if not ft.exit and s.ball and s.ball.vy < 0 then
+				local b = s.ball
+				ft.exit = math.sqrt(b.vx * b.vx + b.vy * b.vy)
+				ft.exit_ang = math.deg(math.atan(b.vx, -b.vy))
+			end
 			if ft.frames > 40 then ft.phase = 3 end
 		elseif ft.phase == 3 then
 			ft.trials = ft.trials + 1
-			if s.ball.y > f.pivot[2] + 1.5 then ft.through = ft.through + 1 else ft.hits = ft.hits + 1 end
-			if ft.trials % 10 == 0 then print(string.format('[fliptest] speed %.0f in/s: trials %d hit %d through %d', fliptest, ft.trials, ft.hits, ft.through)) end
+			-- a ball the bat never sent back up the table is one it passed through; one
+			-- that went up and has already come down again was still hit
+			if ft.exit then ft.hits = ft.hits + 1 else ft.through = ft.through + 1 end
+			if ft.exit then
+				ft.exits[#ft.exits + 1] = ft.exit
+				ft.angs[#ft.angs + 1] = ft.exit_ang
+			end
+			if ft.trials % 10 == 0 then
+				local n = #ft.exits
+				local lo, hi, sum = math.huge, -math.huge, 0
+				local alo, ahi = math.huge, -math.huge
+				for i = 1, n do
+					lo = math.min(lo, ft.exits[i]); hi = math.max(hi, ft.exits[i]); sum = sum + ft.exits[i]
+					alo = math.min(alo, ft.angs[i]); ahi = math.max(ahi, ft.angs[i])
+				end
+				print(string.format('[fliptest] speed %.0f in/s: trials %d hit %d through %d | exit n=%d mean %.0f range %.0f-%.0f spread %.0f | angle %.0f to %.0f deg',
+					fliptest, ft.trials, ft.hits, ft.through, n, n > 0 and sum / n or 0, lo, hi, hi - lo, alo, ahi))
+			end
+			ft.exit, ft.exit_ang = nil, nil
 			ft.phase = 0; ft.frames = 0
 		end
 	end
 
 	local function update_autopilot(s)
 		local b = s.ball
-		for i = 1, #s.flippers do s.auto_flip[i] = math.max(0, s.auto_flip[i] - 1) end
 		if not b or s.state ~= 'play' then return end
 		local cx = s.tbl.width / 2
 		if b.vy > 0 and b.y > s.tbl.length - 9 then
@@ -599,6 +665,9 @@ function pinviz.startplugin()
 		update_outputs(s)
 		update_pulses(s)
 		for k, v in pairs(s.flash) do s.flash[k] = v - 1; if s.flash[k] <= 0 then s.flash[k] = nil end end
+		-- a flip request is a countdown of frames, raised by the autopilot or by the
+		-- flipper test; it has to come down for both, or the bat sticks up for good
+		for i = 1, #s.flippers do s.auto_flip[i] = math.max(0, s.auto_flip[i] - 1) end
 		if fliptest > 0 then update_fliptest(s) else update_autopilot(s) end
 		update_flippers(s)
 		if fliptest > 0 then s.flippers_enabled = true end

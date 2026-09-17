@@ -25,8 +25,13 @@ Environment variables:
   regression test.
 - `PINVIZ_LOG=1` prints every switch closure and solenoid fire to the console.
 - `PINVIZ_FLIPTEST=<speed>` drops balls onto the left flipper at that speed in
-  inches per second and reports how many were hit and how many passed through,
-  as a check on the flipper collision.
+  inches per second, flips so the bat is mid sweep as the ball arrives, and
+  reports how many were hit, how many passed through, and the speed and angle
+  the shots left at. A ball that went back up the table was hit, even if it has
+  come down again by the end of the trial.
+- `PINVIZ_FLIPSPREAD=0` makes that test drop every ball at one point on the bat
+  instead of five. A run is then repeatable and any spread in the exit speeds is
+  the physics rather than the contact point.
 
 ## Where a table comes from
 
