@@ -156,7 +156,6 @@ ToDo:
 #include "machine/6821pia.h"
 #include "machine/timer.h"
 
-#include "input.h" // FIXME: use inputs properly and remove this, reading keyboard directly is bad pracice
 #include "speaker.h"
 
 //#define VERBOSE 1
@@ -180,10 +179,7 @@ public:
 
 	DECLARE_INPUT_CHANGED_MEMBER(activity_button);
 	DECLARE_INPUT_CHANGED_MEMBER(self_test);
-	template <int Param> int outhole_x0();
-	template <int Param> int drop_target_x0();
-	template <int Param> int kickback_x3();
-	DECLARE_INPUT_CHANGED_MEMBER(outhole_changed);
+	DECLARE_INPUT_CHANGED_MEMBER(hold_switch);
 
 	void by35(machine_config &config) ATTR_COLD;
 	void nuovo(machine_config &config) ATTR_COLD;
@@ -504,8 +500,7 @@ static INPUT_PORTS_START( by35 )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_CODE(KEYCODE_BACKSLASH) PORT_NAME("INP05")
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1 )
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_TILT )
-//  PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Outhole") PORT_CODE(KEYCODE_BACKSPACE)
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_MEMBER(FUNC(by35_state::outhole_x0<0x07>)) // PORT_CODE(KEYCODE_BACKSPACE)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Outhole") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(by35_state::hold_switch), 0x07)
 
 	PORT_START("X1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN3 )
@@ -946,14 +941,14 @@ static INPUT_PORTS_START( playboy )
 	PORT_DIPSETTING(    0x40, "Extra Ball or Special Held Until Collected")
 
 	PORT_MODIFY("X0")   /* Drop Target switches */
-	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_MEMBER(FUNC(by35_state::drop_target_x0<0x00>)) // PORT_CODE(KEYCODE_STOP)
-	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_MEMBER(FUNC(by35_state::drop_target_x0<0x01>)) // PORT_CODE(KEYCODE_SLASH)
-	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_MEMBER(FUNC(by35_state::drop_target_x0<0x02>)) // PORT_CODE(KEYCODE_OPENBRACE)
-	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_MEMBER(FUNC(by35_state::drop_target_x0<0x03>)) // PORT_CODE(KEYCODE_CLOSEBRACE)
-	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_MEMBER(FUNC(by35_state::drop_target_x0<0x04>)) // PORT_CODE(KEYCODE_BACKSLASH)
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Drop Target 1") PORT_CODE(KEYCODE_STOP)       PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(by35_state::hold_switch), 0x00)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Drop Target 2") PORT_CODE(KEYCODE_SLASH)      PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(by35_state::hold_switch), 0x01)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Drop Target 3") PORT_CODE(KEYCODE_OPENBRACE)  PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(by35_state::hold_switch), 0x02)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Drop Target 4") PORT_CODE(KEYCODE_CLOSEBRACE) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(by35_state::hold_switch), 0x03)
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Drop Target 5") PORT_CODE(KEYCODE_BACKSLASH)  PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(by35_state::hold_switch), 0x04)
 
 	PORT_MODIFY("X3")
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_CUSTOM ) PORT_READ_LINE_MEMBER(FUNC(by35_state::kickback_x3<0x37>)) // PORT_CODE(KEYCODE_Q)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Kickback Grotto") PORT_CODE(KEYCODE_Q) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(by35_state::hold_switch), 0x37)
 
 	PORT_START("RT2")
 	PORT_ADJUSTER( 50, "RT2 - Tone Sustain" )
@@ -975,7 +970,7 @@ static INPUT_PORTS_START( centaur )
 	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Top Lane Left") PORT_CODE(KEYCODE_BACKSLASH)
 	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1 ) PORT_NAME("Credit Button")
 	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNUSED )
-	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Outhole") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(by35_state::outhole_changed), 0)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Outhole") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(by35_state::hold_switch), 0x07)
 
 	PORT_MODIFY("X1")
 	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN3 ) PORT_NAME("Coin Chute III (Right)")
@@ -1124,69 +1119,13 @@ static INPUT_PORTS_START( frontier )
 INPUT_PORTS_END
 
 
-template <int Param>
-int by35_state::outhole_x0()
+INPUT_CHANGED_MEMBER( by35_state::hold_switch )
 {
-	int bit_shift = (Param & 0x07);
-	int port = ((Param >> 4) & 0x07);
-
-	/* Here we simulate the ball sitting in the Outhole so the Outhole Solenoid can release it */
-
-	if (machine().input().code_pressed_once(KEYCODE_BACKSPACE))
-		m_io_hold_x[port] |= (1 << bit_shift);
-
-	return ((m_io_hold_x[port] >> bit_shift) & 1);
-}
-
-template <int Param>
-int by35_state::kickback_x3()
-{
-	int bit_shift = (Param & 0x07);
-	int port = ((Param >> 4) & 0x07);
-
-	/* Here we simulate the ball sitting in a Saucer so the Saucer Solenoid can release it */
-
-	if (machine().input().code_pressed_once(KEYCODE_Q))
-		m_io_hold_x[port] |= (1 << bit_shift);
-
-	return ((m_io_hold_x[port] >> bit_shift) & 1);
-}
-
-INPUT_CHANGED_MEMBER( by35_state::outhole_changed )
-{
-	// Ball dropped into the outhole (strobe 0, switch 8): keep the switch closed until the
-	// outhole solenoid kicks it out (see the solenoid feature table). Tapping the key is enough.
+	// A switch that stays closed once the ball reaches it (outhole, saucers, drop targets)
+	// until the solenoid that clears it fires, see the solenoid feature tables. Param is
+	// (strobe << 4) | return bit.
 	if (newval)
-		m_io_hold_x[0] |= 0x80;
-}
-
-template <int Param>
-int by35_state::drop_target_x0()
-{
-	/* Here we simulate the Drop Target switch states so the Drop Target Reset Solenoid can also release the switches */
-
-	int bit_shift = (Param & 0x07);
-	int port = ((Param >> 4) & 0x07);
-
-	switch (bit_shift)
-	{
-		case 0: if (machine().input().code_pressed_once(KEYCODE_STOP))
-						m_io_hold_x[port] |= (1 << bit_shift);
-					break;
-		case 1: if (machine().input().code_pressed_once(KEYCODE_SLASH))
-						m_io_hold_x[port] |= (1 << bit_shift);
-					break;
-		case 2: if (machine().input().code_pressed_once(KEYCODE_OPENBRACE))
-						m_io_hold_x[port] |= (1 << bit_shift);
-					break;
-		case 3: if (machine().input().code_pressed_once(KEYCODE_CLOSEBRACE))
-						m_io_hold_x[port] |= (1 << bit_shift);
-					break;
-		case 4: if (machine().input().code_pressed_once(KEYCODE_BACKSLASH))
-						m_io_hold_x[port] |= (1 << bit_shift);
-					break;
-	}
-	return ((m_io_hold_x[port] >> bit_shift) & 1);
+		m_io_hold_x[(param >> 4) & 0x07] |= 1 << (param & 0x07);
 }
 
 uint8_t by35_state::nibble_nvram_r(offs_t offset)
