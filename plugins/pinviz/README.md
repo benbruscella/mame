@@ -48,6 +48,11 @@ A layout that draws only the playfield leaves no room for the shooter lane, so a
 table can set `lay_width` and `lay_length` to say how much of itself the panel
 covers. The rest of the table, the lane included, sits outside the picture.
 
+A layout should not paint the walls and rails itself. pinviz draws those from the
+table, and a layout that draws its own will disagree with them as soon as either
+changes. Every layout here paints only its panel border and leaves the rest to
+the plugin.
+
 `tables/bally_body.lua` holds the parts every machine on Bally's solid state
 cabinet shares: the outline, the shooter lane and its gate, the outlane and
 inlane rails, and the flippers. A table for one of those machines takes the
@@ -58,7 +63,7 @@ skeleton and adds only its own features.
 | Table | Layout supplies positions | Notes |
 |---|---|---|
 | `centaur` | yes | Geometry traced from a playfield photograph. |
-| `playboy` | no, coordinates in the table | Its layout has no ids yet. |
+| `playboy` | yes | |
 | `matahari` | yes | Walls come from the shared Bally body, not the real playfield. |
 | `pwerplay` | yes | Same. Plays a full five ball game. |
 | `hs_l4` | yes | Williams System 11. Switches and solenoids are from Williams' tech chart; the layout arranges the real features rather than tracing the playfield. |
@@ -74,7 +79,7 @@ A table can also set `output_prefix`, because not every driver calls its outputs
 High Speed shows FACTORY SETTING on a fresh NVRAM and needs one reset before it
 will accept a coin, as the `s11.cpp` header says.
 
-For Mata Hari, Power Play and High Speed only the switch positions are real. The
+For Playboy, Mata Hari, Power Play and High Speed only the switch positions are real. The
 walls are a generic cabinet, so the ball does not travel the paths it would on
 the machine, and play is unevenly distributed: Mata Hari's ball spends most of
 its time on the two upper pop bumpers. Tightening those needs a playfield

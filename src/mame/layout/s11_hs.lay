@@ -1015,11 +1015,6 @@ Any state="9" items are not displayed and are only used for object alignment
 			<element ref="Draw_White" id="pinviz:pfy"><bounds x="0" y="0" width="1" height="480" /></element>
 			<element ref="Draw_White"><bounds x="320" y="0" width="1" height="480" /></element>
 
-			<!-- rails that axis aligned rectangles can draw -->
-			<element ref="Draw_White"><bounds x="293.9" y="102.9" width="2.4" height="377.1" /></element>
-			<element ref="Draw_White"><bounds x="41.1" y="285.7" width="2.4" height="74.3" /></element>
-			<element ref="Draw_White"><bounds x="252.8" y="285.7" width="2.4" height="74.3" /></element>
-
 			<!-- Sol 1 outhole and the ball trough -->
 			<element ref="Solenoid_Outhole" name="out0"><bounds x="118.0" y="434.7" width="58.0" height="22.0" /></element>
 			<element ref="Switch_RollOn_WireForm_Left" inputtag="X1" inputmask="0x01" id="pinviz:X1:0x01"><bounds x="137.0" y="435.4" width="20.0" height="16.0" /></element>

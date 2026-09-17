@@ -1000,18 +1000,6 @@ Any state="9" items are not displayed and are only used for object alignment
 			<element ref="Draw_White" id="pinviz:pfy"><bounds x="0" y="0" width="1" height="480" /></element>
 			<element ref="Draw_White"><bounds x="320" y="0" width="1" height="480" /></element>
 
-			<!-- rails and lane guides that can be drawn with axis aligned rectangles -->
-			<element ref="Draw_White"><bounds x="292.3" y="131.4" width="2.4" height="348.6" /></element>
-			<element ref="Draw_White"><bounds x="45.8" y="4.6" width="2.4" height="220.6" /></element>
-			<element ref="Draw_White"><bounds x="88.5" y="36.6" width="2.4" height="32.0" /></element>
-			<element ref="Draw_White"><bounds x="120.1" y="36.6" width="2.4" height="32.0" /></element>
-			<element ref="Draw_White"><bounds x="153.3" y="36.6" width="2.4" height="32.0" /></element>
-			<element ref="Draw_White"><bounds x="186.5" y="36.6" width="2.4" height="32.0" /></element>
-			<element ref="Draw_White"><bounds x="267.1" y="56.0" width="2.4" height="112.0" /></element>
-			<element ref="Draw_White"><bounds x="284.4" y="168.0" width="2.4" height="124.6" /></element>
-			<element ref="Draw_White"><bounds x="37.9" y="292.6" width="2.4" height="77.7" /></element>
-			<element ref="Draw_White"><bounds x="262.3" y="292.6" width="2.4" height="77.7" /></element>
-
 			<!-- Misc Solenoids -->
 			<element name="solenoid5"  ref="Solenoid_Knocker"><bounds x="297" y="457" width="23" height="09" /></element>
 			<element ref="Text_Knocker"><bounds x="290" y="467" width="30" height="10" /></element>
