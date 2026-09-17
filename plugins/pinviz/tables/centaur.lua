@@ -44,6 +44,9 @@ local more = {
 	-- outlane dividers and inlane guides
 	{ 2.0, 27.4, 2.0, 32.4 }, { mirror(2.0), 27.4, mirror(2.0), 32.4 },
 	{ 4.0, 27.4, 4.0, 28.2 }, { mirror(4.0), 27.4, mirror(4.0), 28.2 },
+	-- outlane dividers and inlane guides
+	{ 2.0, 27.4, 2.0, 32.4 }, { mirror(2.0), 27.4, mirror(2.0), 32.4 },
+	{ 4.0, 27.4, 4.0, 28.2 }, { mirror(4.0), 27.4, mirror(4.0), 28.2 },
 	-- sling undersides
 	{ 4.3, 31.2, 5.4, 31.2 }, { mirror(4.3), 31.2, mirror(5.4), 31.2 },
 	-- lower guides from the inlanes down to the flippers
