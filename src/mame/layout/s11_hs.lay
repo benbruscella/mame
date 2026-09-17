@@ -990,6 +990,22 @@ Any state="9" items are not displayed and are only used for object alignment
 	<element name="Key_4"><text string="4"><color red="1.00" green="0.66" blue="0.66" /></text></element>
 	<element name="Key_8"><text string="8"><color red="1.00" green="0.66" blue="0.66" /></text></element>
 
+	<element name="HS_Alpha" defstate="0">
+		<led14segsc><color red="1.0" green="0.2" blue="0.1" /></led14segsc>
+	</element>
+	<element name="HS_Small" defstate="0">
+		<led7seg><color red="1.0" green="0.2" blue="0.1" /></led7seg>
+	</element>
+	<element name="HS_Diag" defstate="0">
+		<led7seg><color red="1.0" green="0.0" blue="1.0" /></led7seg>
+	</element>
+	<element name="Text_P1"><text string="Player 1"><color red="1.0" green="1.0" blue="1.0" /></text></element>
+	<element name="Text_P2"><text string="Player 2"><color red="1.0" green="1.0" blue="1.0" /></text></element>
+	<element name="Text_P3"><text string="Player 3"><color red="1.0" green="1.0" blue="1.0" /></text></element>
+	<element name="Text_P4"><text string="Player 4"><color red="1.0" green="1.0" blue="1.0" /></text></element>
+	<element name="Text_Credits2"><text string="Credits"><color red="1.0" green="1.0" blue="1.0" /></text></element>
+	<element name="Text_BallMatch"><text string="Ball / Match"><color red="1.0" green="1.0" blue="1.0" /></text></element>
+
 	<view name="High Speed Playfield">
 
 		<collection name="Playfield">
@@ -998,7 +1014,6 @@ Any state="9" items are not displayed and are only used for object alignment
 			<element ref="Draw_White"><bounds x="0" y="480" width="320" height="1" /></element>
 			<element ref="Draw_White" id="pinviz:pfy"><bounds x="0" y="0" width="1" height="480" /></element>
 			<element ref="Draw_White"><bounds x="320" y="0" width="1" height="480" /></element>
-			<element ref="Title_HighSpeed"><bounds x="95" y="452" width="130" height="18" /></element>
 
 			<!-- rails that axis aligned rectangles can draw -->
 			<element ref="Draw_White"><bounds x="293.9" y="102.9" width="2.4" height="377.1" /></element>
@@ -1132,6 +1147,61 @@ Any state="9" items are not displayed and are only used for object alignment
 			<!-- Sol 15 knocker, Sol 13 ramp gates, Sol 4 police light -->
 			<element ref="Solenoid_Knocker" name="out14"><bounds x="269.8" y="454.9" width="23.0" height="9.0" /></element>
 			<element ref="Text_Knocker"><bounds x="255" y="466" width="60" height="9" /></element>
+
+		</collection>
+
+		<collection name="Backglass">
+
+			<element ref="Draw_White"><bounds x="320" y="0" width="320" height="1" /></element>
+			<element ref="Draw_White"><bounds x="320" y="320" width="320" height="1" /></element>
+			<element ref="Draw_White"><bounds x="320" y="0" width="1" height="320" /></element>
+			<element ref="Draw_White"><bounds x="640" y="0" width="1" height="320" /></element>
+
+			<element ref="Title_HighSpeed"><bounds x="405" y="12" width="150" height="26" /></element>
+
+			<element ref="Text_P1"><bounds x="332" y="44" width="60" height="11" /></element>
+			<element name="digit1" ref="HS_Alpha"><bounds x="332" y="58" width="16" height="30" /></element>
+			<element name="digit2" ref="HS_Alpha"><bounds x="351" y="58" width="16" height="30" /></element>
+			<element name="digit3" ref="HS_Alpha"><bounds x="370" y="58" width="16" height="30" /></element>
+			<element name="digit4" ref="HS_Alpha"><bounds x="389" y="58" width="16" height="30" /></element>
+			<element name="digit5" ref="HS_Alpha"><bounds x="408" y="58" width="16" height="30" /></element>
+			<element name="digit6" ref="HS_Alpha"><bounds x="427" y="58" width="16" height="30" /></element>
+			<element name="digit7" ref="HS_Alpha"><bounds x="446" y="58" width="16" height="30" /></element>
+
+			<element ref="Text_P2"><bounds x="496" y="44" width="60" height="11" /></element>
+			<element name="digit9" ref="HS_Alpha"><bounds x="496" y="58" width="16" height="30" /></element>
+			<element name="digit10" ref="HS_Alpha"><bounds x="515" y="58" width="16" height="30" /></element>
+			<element name="digit11" ref="HS_Alpha"><bounds x="534" y="58" width="16" height="30" /></element>
+			<element name="digit12" ref="HS_Alpha"><bounds x="553" y="58" width="16" height="30" /></element>
+			<element name="digit13" ref="HS_Alpha"><bounds x="572" y="58" width="16" height="30" /></element>
+			<element name="digit14" ref="HS_Alpha"><bounds x="591" y="58" width="16" height="30" /></element>
+			<element name="digit15" ref="HS_Alpha"><bounds x="610" y="58" width="16" height="30" /></element>
+
+			<element ref="Text_P3"><bounds x="332" y="118" width="60" height="11" /></element>
+			<element name="digit17" ref="HS_Alpha"><bounds x="332" y="132" width="16" height="30" /></element>
+			<element name="digit18" ref="HS_Alpha"><bounds x="351" y="132" width="16" height="30" /></element>
+			<element name="digit19" ref="HS_Alpha"><bounds x="370" y="132" width="16" height="30" /></element>
+			<element name="digit20" ref="HS_Alpha"><bounds x="389" y="132" width="16" height="30" /></element>
+			<element name="digit21" ref="HS_Alpha"><bounds x="408" y="132" width="16" height="30" /></element>
+			<element name="digit22" ref="HS_Alpha"><bounds x="427" y="132" width="16" height="30" /></element>
+			<element name="digit23" ref="HS_Alpha"><bounds x="446" y="132" width="16" height="30" /></element>
+
+			<element ref="Text_P4"><bounds x="496" y="118" width="60" height="11" /></element>
+			<element name="digit25" ref="HS_Alpha"><bounds x="496" y="132" width="16" height="30" /></element>
+			<element name="digit26" ref="HS_Alpha"><bounds x="515" y="132" width="16" height="30" /></element>
+			<element name="digit27" ref="HS_Alpha"><bounds x="534" y="132" width="16" height="30" /></element>
+			<element name="digit28" ref="HS_Alpha"><bounds x="553" y="132" width="16" height="30" /></element>
+			<element name="digit29" ref="HS_Alpha"><bounds x="572" y="132" width="16" height="30" /></element>
+			<element name="digit30" ref="HS_Alpha"><bounds x="591" y="132" width="16" height="30" /></element>
+			<element name="digit31" ref="HS_Alpha"><bounds x="610" y="132" width="16" height="30" /></element>
+
+			<element ref="Text_Credits2"><bounds x="396" y="238" width="60" height="11" /></element>
+			<element name="digit16" ref="HS_Alpha"><bounds x="396" y="252" width="16" height="30" /></element>
+			<element name="digit24" ref="HS_Alpha"><bounds x="415" y="252" width="16" height="30" /></element>
+			<element ref="Text_BallMatch"><bounds x="492" y="238" width="80" height="11" /></element>
+			<element name="digit0" ref="HS_Small"><bounds x="492" y="252" width="16" height="30" /></element>
+			<element name="digit8" ref="HS_Small"><bounds x="511" y="252" width="16" height="30" /></element>
+			<element name="digit60" ref="HS_Diag"><bounds x="336" y="256" width="12" height="22" /></element>
 
 		</collection>
 
