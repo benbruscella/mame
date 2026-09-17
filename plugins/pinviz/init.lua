@@ -33,9 +33,11 @@ function pinviz.startplugin()
 
 	local sim = nil            -- simulation state, nil when the running machine has no table
 	local autopilot = os.getenv('PINVIZ_AUTOPILOT') == '1'
+	local fliptest = tonumber(os.getenv('PINVIZ_FLIPTEST') or '0')   -- ball speed for the flipper test, 0 = off
 	local console_log = os.getenv('PINVIZ_LOG') == '1'
 
-	local SUBSTEPS = 8
+	local SUBSTEPS = 12
+	local FLIPPER_THICKNESS = 0.22   -- half width of the bat, inches
 	local FRAME_DT = 1 / 60
 	local SWITCH_FRAMES = 5     -- how long a hit holds a matrix switch closed
 	local BALL_RESTITUTION_MIN_SPEED = 2.0
@@ -248,7 +250,7 @@ function pinviz.startplugin()
 
 	-- push the ball out of a segment and reflect it. sv is the surface velocity
 	-- (moving flippers), kick an extra outward speed (slings, bumpers).
-	local function collide_segment(b, x0, y0, x1, y1, e, svx, svy, kick)
+	local function collide_segment(b, x0, y0, x1, y1, e, svx, svy, kick, thick)
 		local dx, dy = x1 - x0, y1 - y0
 		local len2 = dx * dx + dy * dy
 		if len2 < 1e-9 then return false end
@@ -257,9 +259,10 @@ function pinviz.startplugin()
 		local cx, cy = x0 + t * dx, y0 + t * dy
 		local nx, ny = b.x - cx, b.y - cy
 		local d = math.sqrt(nx * nx + ny * ny)
-		if d >= b.r or d < 1e-6 then return false end
+		local reach = b.r + (thick or 0)
+		if d >= reach or d < 1e-6 then return false end
 		nx, ny = nx / d, ny / d
-		b.x, b.y = cx + nx * b.r, cy + ny * b.r
+		b.x, b.y = cx + nx * reach, cy + ny * reach
 		local rvx, rvy = b.vx - (svx or 0), b.vy - (svy or 0)
 		local vn = rvx * nx + rvy * ny
 		if vn < 0 then
@@ -274,6 +277,31 @@ function pinviz.startplugin()
 			end
 		end
 		return true, nx, ny, t
+	end
+
+	-- shortest distance between the ball's travel this substep (p0->p1) and the bat
+	-- segment (a->b); returns the closest point on the bat and the parameter along it.
+	local function seg_seg_closest(p0x, p0y, p1x, p1y, ax, ay, bx, by)
+		local ux, uy = p1x - p0x, p1y - p0y
+		local vx, vy = bx - ax, by - ay
+		local wx, wy = p0x - ax, p0y - ay
+		local a = ux * ux + uy * uy
+		local bb = ux * vx + uy * vy
+		local c = vx * vx + vy * vy
+		local d = ux * wx + uy * wy
+		local e = vx * wx + vy * wy
+		local den = a * c - bb * bb
+		local sc, tc
+		if den < 1e-9 then sc = 0 else sc = (bb * e - c * d) / den end
+		sc = math.max(0, math.min(1, sc))
+		tc = (bb * sc + e) / (c < 1e-9 and 1 or c)
+		tc = math.max(0, math.min(1, tc))
+		sc = (bb * tc - d) / (a < 1e-9 and 1 or a)
+		sc = math.max(0, math.min(1, sc))
+		local qx, qy = p0x + sc * ux, p0y + sc * uy       -- closest point on the ball path
+		local rx, ry = ax + tc * vx, ay + tc * vy         -- closest point on the bat
+		local dx, dy = qx - rx, qy - ry
+		return math.sqrt(dx * dx + dy * dy), rx, ry, tc, qx, qy
 	end
 
 	local function collide_circle(b, cx, cy, cr, e, kick)
@@ -332,12 +360,23 @@ function pinviz.startplugin()
 		if not b or s.state ~= 'play' then return end
 
 		-- gravity down the incline, rolling friction
+		local px, py = b.x, b.y   -- where the ball was at the start of this substep
+
 		b.vy = b.vy + tbl.gravity * dt
 		local damp = 1 - tbl.rolling_friction * dt
 		b.vx, b.vy = b.vx * damp, b.vy * damp
 
 		b.x = b.x + b.vx * dt
 		b.y = b.y + b.vy * dt
+
+		-- flippers move a little each substep towards where the buttons want them
+		for _, f in ipairs(s.flippers) do
+			f.prev_angle = f.angle
+			local delta = f.target - f.angle
+			local move = f.rate * dt
+			if math.abs(delta) <= move then f.angle = f.target else f.angle = f.angle + (delta > 0 and move or -move) end
+			f.omega = math.rad(f.angle - f.prev_angle) / dt
+		end
 
 		local e = tbl.wall_restitution
 
@@ -358,17 +397,29 @@ function pinviz.startplugin()
 
 		for i, f in ipairs(s.flippers) do
 			local x0, y0, x1, y1 = flipper_ends(f)
-			-- surface velocity at the contact point along the flipper
-			local hit, nx, ny, t = collide_segment(b, x0, y0, x1, y1, 0.35, 0, 0)
-			if hit and f.omega ~= 0 then
-				local a = math.rad(f.angle)
-				local d = t * f.length
-				local svx, svy = -f.omega * d * math.sin(a), f.omega * d * math.cos(a)
-				local vn = svx * nx + svy * ny
-				if vn > 0 then
-					-- surface moving into the ball: add its normal speed
-					b.vx = b.vx + 1.4 * vn * nx
-					b.vy = b.vy + 1.4 * vn * ny
+			local reach = b.r + FLIPPER_THICKNESS
+			-- swept test: closest distance between the ball's path this substep and the
+			-- bat. This catches a fast ball or a fast bat that a point test would miss.
+			local dist, rx, ry, t, qx, qy = seg_seg_closest(px, py, b.x, b.y, x0, y0, x1, y1)
+			if dist < reach then
+				-- put the ball at the contact, just off the bat on the approach side
+				local nx, ny = qx - rx, qy - ry
+				local nl = math.sqrt(nx * nx + ny * ny)
+				if nl < 1e-6 then
+					local dx, dy = x1 - x0, y1 - y0; local l = math.sqrt(dx * dx + dy * dy)
+					nx, ny = -dy / l, dx / l
+					if (px - rx) * nx + (py - ry) * ny < 0 then nx, ny = -nx, -ny end
+				else nx, ny = nx / nl, ny / nl end
+				b.x, b.y = rx + nx * reach, ry + ny * reach
+				-- reflect, then add the bat's surface velocity at the contact
+				local vn = b.vx * nx + b.vy * ny
+				if vn < 0 then b.vx = b.vx - 1.35 * vn * nx; b.vy = b.vy - 1.35 * vn * ny end
+				if f.omega ~= 0 then
+					local a = math.rad(f.angle)
+					local d = t * f.length
+					local svx, svy = -f.omega * d * math.sin(a), f.omega * d * math.cos(a)
+					local sn = svx * nx + svy * ny
+					if sn > 0 then b.vx = b.vx + 1.4 * sn * nx; b.vy = b.vy + 1.4 * sn * ny end
 				end
 			end
 		end
@@ -455,17 +506,34 @@ function pinviz.startplugin()
 		local enabled = s.tbl.flipper_enable == nil or output_on(s, s.tbl.flipper_enable)
 		local input = manager.machine.input
 		for i, f in ipairs(s.flippers) do
-			local want = f.rest
-			local pressed = enabled and (input:code_pressed(f.code) or (autopilot and s.auto_flip[i] > 0))
-			if pressed then want = f.up end
-			local rate = 1400 -- degrees per second
-			local delta = want - f.angle
-			local move = rate * FRAME_DT
-			local prev = f.angle
-			if math.abs(delta) <= move then f.angle = want else f.angle = f.angle + (delta > 0 and move or -move) end
-			f.omega = math.rad(f.angle - prev) / FRAME_DT
+			local pressed = enabled and (input:code_pressed(f.code) or ((autopilot or fliptest > 0) and s.auto_flip[i] > 0))
+			f.target = pressed and f.up or f.rest
+			f.rate = 1400 -- degrees per second
 		end
 		s.flippers_enabled = enabled
+	end
+
+	-- Flipper regression test: drop a fast ball onto the left flipper, flip when it
+	-- arrives, and count whether it was hit or passed through the bat.
+	local function update_fliptest(s)
+		local ft = s.ft
+		if not ft then ft = { phase = 0, frames = 0, hits = 0, through = 0, trials = 0 }; s.ft = ft end
+		ft.frames = ft.frames + 1
+		local f = s.flippers[1]
+		if ft.phase == 0 and ft.frames > 60 then
+			new_ball(s, f.pivot[1] + 1.6 + (ft.trials % 5) * 0.3, f.pivot[2] - 6, 0, fliptest)
+			s.state = 'play'; s.flippers_enabled = true; ft.phase = 1; ft.frames = 0
+		elseif ft.phase == 1 then
+			if s.ball.y > f.pivot[2] - 1.2 then s.auto_flip[1] = 10; ft.phase = 2; ft.frames = 0 end
+			if ft.frames > 120 then ft.phase = 3 end
+		elseif ft.phase == 2 then
+			if ft.frames > 40 then ft.phase = 3 end
+		elseif ft.phase == 3 then
+			ft.trials = ft.trials + 1
+			if s.ball.y > f.pivot[2] + 1.5 then ft.through = ft.through + 1 else ft.hits = ft.hits + 1 end
+			if ft.trials % 10 == 0 then print(string.format('[fliptest] speed %.0f in/s: trials %d hit %d through %d', fliptest, ft.trials, ft.hits, ft.through)) end
+			ft.phase = 0; ft.frames = 0
+		end
 	end
 
 	local function update_autopilot(s)
@@ -487,8 +555,9 @@ function pinviz.startplugin()
 		update_outputs(s)
 		update_pulses(s)
 		for k, v in pairs(s.flash) do s.flash[k] = v - 1; if s.flash[k] <= 0 then s.flash[k] = nil end end
-		update_autopilot(s)
+		if fliptest > 0 then update_fliptest(s) else update_autopilot(s) end
 		update_flippers(s)
+		if fliptest > 0 then s.flippers_enabled = true end
 
 		-- drop target resets
 		for i, tg in ipairs(tbl.targets or {}) do
@@ -672,7 +741,7 @@ function pinviz.startplugin()
 			for _, f in ipairs(s.flippers) do
 				local x0, y0, x1, y1 = flipper_ends(f)
 				local c = s.flippers_enabled and C_FLIP or C_FLIP_OFF
-				thick(x0, y0, x1, y1, c, 0.22)
+				thick(x0, y0, x1, y1, c, FLIPPER_THICKNESS)
 				disc(x0, y0, 0.32, c, 4)
 			end
 
@@ -737,7 +806,7 @@ function pinviz.startplugin()
 		local input = manager.machine.input
 		for i, f in ipairs(tbl.flippers) do
 			s.flippers[i] = { pivot = f.pivot, length = f.length, rest = f.rest, up = f.up,
-				angle = f.rest, omega = 0, code = input:code_from_token(f.key) }
+				angle = f.rest, prev_angle = f.rest, target = f.rest, rate = 1400, omega = 0, code = input:code_from_token(f.key) }
 			s.auto_flip[i] = 0
 		end
 		s.plunge_code = input:code_from_token('KEYCODE_SPACE')

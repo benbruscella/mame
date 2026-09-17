@@ -36,7 +36,7 @@ local more = {
 	-- Queen's Chamber lane on the far left: right hand wall, open at the bottom. Below
 	-- it the far left channel continues down into the left outlane; the inlane joins
 	-- from the right, so a shot up the left side goes on up into the chamber.
-	{ 2.9, 1.4, 2.9, 19.7 },
+	{ 2.9, 0.4, 2.9, 19.7 },
 	-- top lane guides, three lanes between four guides
 	{ 5.6, 3.4, 5.6, 6.2 }, { 7.6, 3.2, 7.6, 6.0 }, { 9.7, 3.0, 9.7, 5.8 }, { 11.8, 2.9, 11.8, 5.7 },
 	-- orb release tunnel / bonus lane on the right: inner wall, then the rail that

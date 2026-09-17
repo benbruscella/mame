@@ -1003,7 +1003,7 @@ Any state="9" items are not displayed and are only used for object alignment
 
 			<!-- rails and lane guides that can be drawn with axis aligned rectangles -->
 			<element ref="Draw_White"><bounds x="292.3" y="131.4" width="2.4" height="348.6" /></element>
-			<element ref="Draw_White"><bounds x="45.8" y="16.0" width="2.4" height="209.1" /></element>
+			<element ref="Draw_White"><bounds x="45.8" y="4.6" width="2.4" height="220.6" /></element>
 			<element ref="Draw_White"><bounds x="88.5" y="36.6" width="2.4" height="32.0" /></element>
 			<element ref="Draw_White"><bounds x="120.1" y="36.6" width="2.4" height="32.0" /></element>
 			<element ref="Draw_White"><bounds x="153.3" y="36.6" width="2.4" height="32.0" /></element>
