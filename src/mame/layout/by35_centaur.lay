@@ -1185,7 +1185,7 @@ Any state="9" items are not displayed and are only used for object alignment
 		</collection>
 
 
-		<collection name="I/O Test" visible="no">
+		<collection name="I/O Test">
 
 			<element ref="Draw_White"><bounds x="320" y="320" width="320" height="1" /></element>
 			<element ref="Draw_White"><bounds x="320" y="480" width="320" height="1" /></element>
