@@ -61,6 +61,18 @@ skeleton and adds only its own features.
 | `playboy` | no, coordinates in the table | Its layout has no ids yet. |
 | `matahari` | yes | Walls come from the shared Bally body, not the real playfield. |
 | `pwerplay` | yes | Same, and untested: the ROM set was not available. |
+| `hs_l4` | yes | Williams System 11. Switches and solenoids are from Williams' tech chart; the layout arranges the real features rather than tracing the playfield. |
+
+A machine with a ball trough will not start a game until the trough reads full, so
+a table can list its trough switches. pinviz then holds one closed per ball at
+home, hands one to the shooter lane when the feeder solenoid fires, and takes one
+back when the outhole kicker returns a drained ball. High Speed needs this.
+
+A table can also set `output_prefix`, because not every driver calls its outputs
+`solenoid<n>`: System 11 publishes `out0` to `out85`.
+
+High Speed shows FACTORY SETTING on a fresh NVRAM and needs one reset before it
+will accept a coin, as the `s11.cpp` header says.
 
 For Mata Hari and Power Play only the switch positions are real. The walls are
 the generic cabinet, so the ball does not yet reach every feature the way it

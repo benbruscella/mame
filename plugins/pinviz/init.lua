@@ -125,7 +125,8 @@ function pinviz.startplugin()
 			o.rose = (v ~= 0) and (o.last == 0)
 			o.last = v
 			if o.rose then
-				local idx = tonumber(name:match('^solenoid(%d+)$'))
+				local prefix = s.tbl.output_prefix or 'solenoid'
+				local idx = tonumber(name:match('^' .. prefix .. '(%d+)$'))
 				local label = idx and s.tbl.solenoid_names and s.tbl.solenoid_names[idx]
 				log(s, 'sol ' .. (label or name))
 				if label then s.flash[label] = 12 end
@@ -338,6 +339,15 @@ function pinviz.startplugin()
 
 	local function new_ball(s, x, y, vx, vy)
 		s.ball = { x = x, y = y, vx = vx or 0, vy = vy or 0, r = s.tbl.ball_radius }
+	end
+
+	-- Machines with a ball trough will not start until the trough reads full. The
+	-- trough holds its switches closed for the balls that are home: the outhole
+	-- kicker returns a drained ball to it, and the shooter lane feeder takes one out.
+	local function trough_update(s)
+		local tr = s.tbl.trough
+		if not tr then return end
+		for i, sw in ipairs(tr) do hold_switch(s, sw, i <= s.trough_balls) end
 	end
 
 	local function serve(s, why)
@@ -574,7 +584,15 @@ function pinviz.startplugin()
 		-- serving and the outhole
 		for _, name in ipairs(tbl.serve_solenoids or {}) do
 			if rose(s, name) and s.state == 'trough' then
-				serve(s, name)
+				if tbl.trough then
+					if s.trough_balls > 0 then
+						s.trough_balls = s.trough_balls - 1
+						trough_update(s)
+						serve(s, name)
+					end
+				else
+					serve(s, name)
+				end
 			end
 		end
 		s.saucer_cooldown = math.max(0, s.saucer_cooldown - 1)
@@ -602,10 +620,21 @@ function pinviz.startplugin()
 		end
 		if s.state == 'outhole' and rose(s, tbl.outhole_solenoid) then
 			hold_switch(s, tbl.outhole_switch, false)
-			-- on this hardware the outhole kick delivers the ball to the shooter lane
-			serve(s, 'outhole kick')
+			if tbl.trough then
+				-- the outhole kicker returns the ball to the trough; the shooter lane
+				-- feeder takes it from there when the game is ready
+				s.trough_balls = math.min(#tbl.trough, s.trough_balls + 1)
+				trough_update(s)
+				s.state = 'trough'
+				log(s, 'outhole kick, ball back in the trough')
+			else
+				-- on this hardware the outhole kick delivers the ball to the shooter lane
+				serve(s, 'outhole kick')
+			end
 		end
-		if s.state == 'trough' and s.relay_frames > 30 then
+		-- a machine with a modelled trough serves only when its feeder fires; without
+		-- one, fall back to serving a ball once the flippers have been live a while
+		if not tbl.trough and s.state == 'trough' and s.relay_frames > 30 then
 			s.idle_frames = s.idle_frames + 1
 			if s.idle_frames > 4 * 60 then
 				serve(s, 'game in progress, no ball')
@@ -803,7 +832,7 @@ function pinviz.startplugin()
 			tbl = tbl, ball = nil, state = 'trough', events = {}, pulses = {}, outputs = {},
 			dropped = {}, in_sensor = {}, flippers = {}, auto_flip = {}, idle_frames = 0,
 			shooter_frames = 0, flippers_enabled = false, saucer_cooldown = 0, saucer_frames = 0, relay_frames = 0,
-			flash = {},
+			flash = {}, trough_balls = 0,
 		}
 		s.lay = layout_reader(tbl)
 		local placed, kept, dropped = place_features(s)
@@ -821,7 +850,12 @@ function pinviz.startplugin()
 		for _, tg in ipairs(tbl.targets or {}) do if tg.reset then watch_output(s, tg.reset) end end
 		for _, sc in ipairs(tbl.saucers or {}) do watch_output(s, sc.solenoid) end
 		if tbl.solenoid_names then
-			for idx, _ in pairs(tbl.solenoid_names) do watch_output(s, 'solenoid' .. idx) end
+			local prefix = tbl.output_prefix or 'solenoid'
+			for idx, _ in pairs(tbl.solenoid_names) do watch_output(s, prefix .. idx) end
+		end
+		if tbl.trough then
+			s.trough_balls = #tbl.trough
+			trough_update(s)
 		end
 		s.draw = make_drawer(s)
 		sim = s
@@ -833,6 +867,7 @@ function pinviz.startplugin()
 			for _, p in pairs(sim.pulses) do p.field:clear_value() end
 			hold_switch(sim, sim.tbl.outhole_switch, false)
 			for _, sc in ipairs(sim.tbl.saucers or {}) do hold_switch(sim, sc.switch, false) end
+			for _, sw in ipairs(sim.tbl.trough or {}) do hold_switch(sim, sw, false) end
 		end
 		sim = nil
 	end
