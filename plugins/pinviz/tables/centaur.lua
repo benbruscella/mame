@@ -116,8 +116,8 @@ return {
 	},
 
 	bumpers = {
-		{ switch = { ':X4', 0x80 }, r = 1.15, kick = 65 },
-		{ switch = { ':X4', 0x40 }, r = 1.15, kick = 65 },
+		{ switch = { ':X4', 0x80 }, r = 1.65, kick = 65 },
+		{ switch = { ':X4', 0x40 }, r = 1.65, kick = 65 },
 	},
 
 	targets = {
