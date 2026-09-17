@@ -459,7 +459,8 @@ function pinviz.startplugin()
 	end
 
 	local function frame_done()
-		if sim then sim.draw() end
+		-- leave MAME's own menus and messages readable
+		if sim and not manager.ui.menu_active then sim.draw() end
 	end
 
 	-- --------------------------------------------------------------------
