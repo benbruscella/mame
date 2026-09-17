@@ -1,0 +1,523 @@
+-- license:BSD-3-Clause
+-- copyright-holders:Ben Bruscella
+--
+-- pinviz: a minimal pinball playfield for testing MAME pinball drivers.
+--
+-- The emulated machine is the real thing: the ROM, switch matrix, solenoids,
+-- lamps, displays and sound. This plugin adds the one part MAME does not have,
+-- a ball. It is enough physics to play a game and watch the driver react, not a
+-- simulator: one ball, walls, flippers, slingshots, pop bumpers, targets and
+-- lanes, drawn as lines over the left part of the window.
+--
+-- A table definition (plugins/pinviz/tables/<system>.lua) says where things are
+-- and which input port field each one closes. Solenoid outputs from the driver
+-- drive the ball the other way: serving, the outhole kick, drop target resets
+-- and the flipper enable relay.
+--
+-- Keys: left/right flipper as named in the table (Shift keys for Centaur),
+-- Space to plunge. Environment: PINVIZ_AUTOPILOT=1 plays by itself,
+-- PINVIZ_LOG=1 prints the event log to the console.
+
+local exports = {
+	name = 'pinviz',
+	version = '0.1.0',
+	description = 'Minimal pinball playfield simulation for testing pinball drivers',
+	license = 'BSD-3-Clause',
+	author = { name = 'Ben Bruscella' } }
+
+local pinviz = exports
+
+local frame_subscription, start_subscription, stop_subscription
+
+function pinviz.startplugin()
+
+	local sim = nil            -- simulation state, nil when the running machine has no table
+	local autopilot = os.getenv('PINVIZ_AUTOPILOT') == '1'
+	local console_log = os.getenv('PINVIZ_LOG') == '1'
+
+	local SUBSTEPS = 8
+	local FRAME_DT = 1 / 60
+	local SWITCH_FRAMES = 5     -- how long a hit holds a matrix switch closed
+	local BALL_RESTITUTION_MIN_SPEED = 2.0
+
+	-- --------------------------------------------------------------------
+	-- helpers
+	-- --------------------------------------------------------------------
+
+	local function load_table(name)
+		local ok, tbl = pcall(require, 'pinviz/tables/' .. name)
+		if ok and type(tbl) == 'table' then
+			return tbl
+		end
+		return nil
+	end
+
+	local function output_proxy(name)
+		local root = manager.machine.devices[':']
+		return root:output(name)
+	end
+
+	local function field(sw)
+		local port = manager.machine.ioport.ports[sw[1]]
+		if not port then return nil end
+		return port:field(sw[2])
+	end
+
+	local function log(s, msg)
+		local t = manager.machine.time.seconds + (manager.machine.time.msec / 1000)
+		local line = string.format('%6.2f  %s', t, msg)
+		table.insert(s.events, 1, line)
+		if #s.events > 10 then table.remove(s.events) end
+		if console_log then print('[pinviz] ' .. line) end
+	end
+
+	-- --------------------------------------------------------------------
+	-- switch handling: a hit closes a switch for a few frames
+	-- --------------------------------------------------------------------
+
+	local function pulse_switch(s, sw, name)
+		local key = sw[1] .. '/' .. sw[2]
+		local p = s.pulses[key]
+		if not p then
+			local f = field(sw)
+			if not f then return end
+			p = { field = f, frames = 0, name = name }
+			s.pulses[key] = p
+		end
+		if p.frames == 0 then
+			p.field:set_value(1)
+			log(s, 'switch  ' .. (name or key))
+		end
+		p.frames = SWITCH_FRAMES
+	end
+
+	local function hold_switch(s, sw, on)
+		local f = field(sw)
+		if not f then return end
+		if on then f:set_value(1) else f:clear_value() end
+	end
+
+	local function update_pulses(s)
+		for key, p in pairs(s.pulses) do
+			if p.frames > 0 then
+				p.frames = p.frames - 1
+				if p.frames == 0 then p.field:clear_value() end
+			end
+		end
+	end
+
+	-- --------------------------------------------------------------------
+	-- solenoid outputs: rising edges drive the ball
+	-- --------------------------------------------------------------------
+
+	local function watch_output(s, name)
+		if not s.outputs[name] then
+			s.outputs[name] = { proxy = output_proxy(name), last = 0, rose = false }
+		end
+	end
+
+	local function update_outputs(s)
+		for name, o in pairs(s.outputs) do
+			local v = o.proxy:get() or 0
+			o.rose = (v ~= 0) and (o.last == 0)
+			o.last = v
+			if o.rose then
+				local idx = tonumber(name:match('^solenoid(%d+)$'))
+				local label = idx and s.tbl.solenoid_names and s.tbl.solenoid_names[idx]
+				log(s, 'solenoid ' .. (label or name))
+			end
+		end
+	end
+
+	local function rose(s, name)
+		local o = s.outputs[name]
+		return o and o.rose
+	end
+
+	local function output_on(s, name)
+		local o = s.outputs[name]
+		return o and o.last ~= 0
+	end
+
+	-- --------------------------------------------------------------------
+	-- ball and geometry
+	-- --------------------------------------------------------------------
+
+	-- push the ball out of a segment and reflect it. sv is the surface velocity
+	-- (moving flippers), kick an extra outward speed (slings, bumpers).
+	local function collide_segment(b, x0, y0, x1, y1, e, svx, svy, kick)
+		local dx, dy = x1 - x0, y1 - y0
+		local len2 = dx * dx + dy * dy
+		if len2 < 1e-9 then return false end
+		local t = ((b.x - x0) * dx + (b.y - y0) * dy) / len2
+		if t < 0 then t = 0 elseif t > 1 then t = 1 end
+		local cx, cy = x0 + t * dx, y0 + t * dy
+		local nx, ny = b.x - cx, b.y - cy
+		local d = math.sqrt(nx * nx + ny * ny)
+		if d >= b.r or d < 1e-6 then return false end
+		nx, ny = nx / d, ny / d
+		b.x, b.y = cx + nx * b.r, cy + ny * b.r
+		local rvx, rvy = b.vx - (svx or 0), b.vy - (svy or 0)
+		local vn = rvx * nx + rvy * ny
+		if vn < 0 then
+			b.vx = b.vx - (1 + e) * vn * nx
+			b.vy = b.vy - (1 + e) * vn * ny
+		end
+		if kick and kick > 0 then
+			local cur = b.vx * nx + b.vy * ny
+			if cur < kick then
+				b.vx = b.vx + (kick - cur) * nx
+				b.vy = b.vy + (kick - cur) * ny
+			end
+		end
+		return true, nx, ny, t
+	end
+
+	local function collide_circle(b, cx, cy, cr, e, kick)
+		local nx, ny = b.x - cx, b.y - cy
+		local d = math.sqrt(nx * nx + ny * ny)
+		local rr = cr + b.r
+		if d >= rr or d < 1e-6 then return false end
+		nx, ny = nx / d, ny / d
+		b.x, b.y = cx + nx * rr, cy + ny * rr
+		local vn = b.vx * nx + b.vy * ny
+		if vn < 0 then
+			b.vx = b.vx - (1 + e) * vn * nx
+			b.vy = b.vy - (1 + e) * vn * ny
+		end
+		if kick and kick > 0 then
+			local cur = b.vx * nx + b.vy * ny
+			if cur < kick then
+				b.vx = b.vx + (kick - cur) * nx
+				b.vy = b.vy + (kick - cur) * ny
+			end
+		end
+		return true
+	end
+
+	local function flipper_ends(f)
+		local a = math.rad(f.angle)
+		return f.pivot[1], f.pivot[2], f.pivot[1] + f.length * math.cos(a), f.pivot[2] + f.length * math.sin(a)
+	end
+
+	local function new_ball(s, x, y, vx, vy)
+		s.ball = { x = x, y = y, vx = vx or 0, vy = vy or 0, r = s.tbl.ball_radius }
+	end
+
+	local function serve(s, why)
+		local p = s.tbl.serve_position
+		new_ball(s, p[1], p[2], 0, 0)
+		s.state = 'shooter'
+		s.shooter_frames = 0
+		log(s, 'ball to shooter lane (' .. why .. ')')
+	end
+
+	local function plunge(s)
+		local b = s.ball
+		local spd = s.tbl.launch_speed * (0.9 + 0.2 * math.random())
+		b.vx, b.vy = 0, -spd
+		s.state = 'play'
+		log(s, 'plunge')
+	end
+
+	-- --------------------------------------------------------------------
+	-- one physics step
+	-- --------------------------------------------------------------------
+
+	local function step(s, dt)
+		local tbl, b = s.tbl, s.ball
+		if not b or s.state ~= 'play' then return end
+
+		-- gravity down the incline, rolling friction
+		b.vy = b.vy + tbl.gravity * dt
+		local damp = 1 - tbl.rolling_friction * dt
+		b.vx, b.vy = b.vx * damp, b.vy * damp
+
+		b.x = b.x + b.vx * dt
+		b.y = b.y + b.vy * dt
+
+		local e = tbl.wall_restitution
+
+		for _, w in ipairs(tbl.walls) do
+			collide_segment(b, w[1], w[2], w[3], w[4], e)
+		end
+		for _, p in ipairs(tbl.posts or {}) do
+			collide_circle(b, p[1], p[2], p[3], 0.6)
+		end
+
+		for i, f in ipairs(s.flippers) do
+			local x0, y0, x1, y1 = flipper_ends(f)
+			-- surface velocity at the contact point along the flipper
+			local hit, nx, ny, t = collide_segment(b, x0, y0, x1, y1, 0.35, 0, 0)
+			if hit and f.omega ~= 0 then
+				local a = math.rad(f.angle)
+				local d = t * f.length
+				local svx, svy = -f.omega * d * math.sin(a), f.omega * d * math.cos(a)
+				local vn = svx * nx + svy * ny
+				if vn > 0 then
+					-- surface moving into the ball: add its normal speed
+					b.vx = b.vx + 1.4 * vn * nx
+					b.vy = b.vy + 1.4 * vn * ny
+				end
+			end
+		end
+
+		for i, sl in ipairs(tbl.slings or {}) do
+			local hit = collide_segment(b, sl[1], sl[2], sl[3], sl[4], 0.5, 0, 0, sl.kick)
+			if hit then pulse_switch(s, sl.switch, sl.name) end
+		end
+
+		for i, bp in ipairs(tbl.bumpers or {}) do
+			local hit = collide_circle(b, bp[1], bp[2], bp[3], 0.5, bp.kick)
+			if hit then pulse_switch(s, bp.switch, bp.name) end
+		end
+
+		for i, tg in ipairs(tbl.targets or {}) do
+			if not s.dropped[i] then
+				local hit = collide_segment(b, tg[1], tg[2], tg[3], tg[4], 0.6)
+				if hit then
+					pulse_switch(s, tg.switch, tg.name)
+					if tg.drop then
+						s.dropped[i] = true
+						log(s, 'target down: ' .. tg.name)
+					end
+				end
+			end
+		end
+
+		for i, sn in ipairs(tbl.sensors or {}) do
+			local dx, dy = b.x - sn[1], b.y - sn[2]
+			local inside = (dx * dx + dy * dy) < (sn[3] * sn[3])
+			if inside and not s.in_sensor[i] then
+				pulse_switch(s, sn.switch, sn.name)
+			end
+			s.in_sensor[i] = inside
+		end
+
+		-- keep the ball on the table
+		if b.x < b.r then b.x, b.vx = b.r, math.abs(b.vx) end
+		if b.x > tbl.width - b.r then b.x, b.vx = tbl.width - b.r, -math.abs(b.vx) end
+		if b.y < b.r then b.y, b.vy = b.r, math.abs(b.vy) end
+
+		if b.y > tbl.drain_y then
+			s.state = 'outhole'
+			b.vx, b.vy = 0, 0
+			b.y = tbl.drain_y
+			hold_switch(s, tbl.outhole_switch, true)
+			log(s, 'drain, ball in outhole')
+		end
+	end
+
+	-- --------------------------------------------------------------------
+	-- per frame: inputs, outputs, physics, drawing
+	-- --------------------------------------------------------------------
+
+	local function update_flippers(s)
+		local enabled = s.tbl.flipper_enable == nil or output_on(s, s.tbl.flipper_enable)
+		local input = manager.machine.input
+		for i, f in ipairs(s.flippers) do
+			local want = f.rest
+			local pressed = enabled and (input:code_pressed(f.code) or (autopilot and s.auto_flip[i] > 0))
+			if pressed then want = f.up end
+			local rate = 1400 -- degrees per second
+			local delta = want - f.angle
+			local move = rate * FRAME_DT
+			local prev = f.angle
+			if math.abs(delta) <= move then f.angle = want else f.angle = f.angle + (delta > 0 and move or -move) end
+			f.omega = math.rad(f.angle - prev) / FRAME_DT
+		end
+		s.flippers_enabled = enabled
+	end
+
+	local function update_autopilot(s)
+		local b = s.ball
+		for i = 1, #s.flippers do s.auto_flip[i] = math.max(0, s.auto_flip[i] - 1) end
+		if not b or s.state ~= 'play' then return end
+		local cx = s.tbl.width / 2
+		if b.vy > 0 and b.y > s.tbl.length - 9 then
+			local i = (b.x < cx) and 1 or 2
+			if s.auto_flip[i] == 0 and math.random() < 0.15 then s.auto_flip[i] = 8 end
+		end
+	end
+
+	local function process_frame()
+		local s = sim
+		if not s then return end
+		local tbl = s.tbl
+
+		update_outputs(s)
+		update_pulses(s)
+		update_autopilot(s)
+		update_flippers(s)
+
+		-- drop target resets
+		for i, tg in ipairs(tbl.targets or {}) do
+			if tg.drop and s.dropped[i] and rose(s, tg.reset) then
+				s.dropped[i] = false
+			end
+		end
+
+		-- serving and the outhole
+		for _, name in ipairs(tbl.serve_solenoids or {}) do
+			if rose(s, name) and s.state == 'trough' then
+				serve(s, name)
+			end
+		end
+		if s.state == 'outhole' and rose(s, tbl.outhole_solenoid) then
+			hold_switch(s, tbl.outhole_switch, false)
+			-- on this hardware the outhole kick delivers the ball to the shooter lane
+			serve(s, 'outhole kick')
+		end
+		if s.state == 'trough' and s.flippers_enabled then
+			s.idle_frames = s.idle_frames + 1
+			if s.idle_frames > 4 * 60 then
+				serve(s, 'game in progress, no ball')
+			end
+		else
+			s.idle_frames = 0
+		end
+
+		if s.state == 'shooter' then
+			s.shooter_frames = s.shooter_frames + 1
+			local input = manager.machine.input
+			if input:code_pressed(s.plunge_code) or autopilot or s.shooter_frames > 3 * 60 then
+				plunge(s)
+			end
+		end
+
+		local dt = FRAME_DT / SUBSTEPS
+		for i = 1, SUBSTEPS do step(s, dt) end
+
+		s.draw()
+	end
+
+	-- --------------------------------------------------------------------
+	-- drawing
+	-- --------------------------------------------------------------------
+
+	local function make_drawer(s)
+		local tbl = s.tbl
+		local ui = manager.machine.render.ui_container
+		local target = manager.machine.render.ui_target
+
+		local C_BG, C_WALL, C_SLING, C_BUMPER = 0xF0101820, 0xFFB8B8B8, 0xFFFF9040, 0xFFFF5050
+		local C_TARGET, C_DROP, C_DOWN, C_SENSOR = 0xFF60FF60, 0xFF50C8FF, 0x5050C8FF, 0xFF9090FF
+		local C_FLIP, C_FLIP_OFF, C_BALL, C_TEXT = 0xFFFFE040, 0xFF806020, 0xFFFFFFFF, 0xFFE0E0E0
+
+		local function xf()
+			local W, H = target.width, target.height
+			if W <= 0 or H <= 0 then W, H = 640, 480 end
+			local avail_w, avail_h = 0.48 * W, 0.96 * H
+			local ppi = math.min(avail_w / tbl.width, avail_h / tbl.length)
+			local ox, oy = 0.01 * W, 0.02 * H
+			return function(x, y) return (ox + x * ppi) / W, (oy + y * ppi) / H end, ppi / W, ppi / H
+		end
+
+		return function()
+			local to, sx, sy = xf()
+			local ax, ay = to(0, 0)
+			local bx, by = to(tbl.width, tbl.length)
+			ui:draw_box(ax - 0.004, ay - 0.004, bx + 0.004, by + 0.004, C_BG, C_BG)
+
+			local function line(x0, y0, x1, y1, c)
+				local ux0, uy0 = to(x0, y0)
+				local ux1, uy1 = to(x1, y1)
+				ui:draw_line(ux0, uy0, ux1, uy1, c)
+			end
+			local function circle(x, y, r, c, n)
+				n = n or 12
+				local px, py
+				for i = 0, n do
+					local a = (i / n) * 2 * math.pi
+					local qx, qy = x + r * math.cos(a), y + r * math.sin(a)
+					if px then line(px, py, qx, qy, c) end
+					px, py = qx, qy
+				end
+			end
+
+			for _, w in ipairs(tbl.walls) do line(w[1], w[2], w[3], w[4], C_WALL) end
+			for _, p in ipairs(tbl.posts or {}) do circle(p[1], p[2], p[3], C_WALL, 8) end
+			for _, sl in ipairs(tbl.slings or {}) do line(sl[1], sl[2], sl[3], sl[4], C_SLING) end
+			for _, bp in ipairs(tbl.bumpers or {}) do circle(bp[1], bp[2], bp[3], C_BUMPER) end
+			for i, tg in ipairs(tbl.targets or {}) do
+				local c = tg.drop and (s.dropped[i] and C_DOWN or C_DROP) or C_TARGET
+				line(tg[1], tg[2], tg[3], tg[4], c)
+			end
+			for i, sn in ipairs(tbl.sensors or {}) do circle(sn[1], sn[2], sn[3], C_SENSOR, 8) end
+
+			for _, f in ipairs(s.flippers) do
+				local x0, y0, x1, y1 = flipper_ends(f)
+				local c = s.flippers_enabled and C_FLIP or C_FLIP_OFF
+				line(x0, y0, x1, y1, c)
+				line(x0, y0 + 0.25, x1, y1 + 0.25, c)
+				line(x0, y0 - 0.25, x1, y1 - 0.25, c)
+			end
+
+			if s.ball then
+				local b = s.ball
+				local ux0, uy0 = to(b.x - b.r, b.y - b.r)
+				local ux1, uy1 = to(b.x + b.r, b.y + b.r)
+				ui:draw_box(ux0, uy0, ux1, uy1, C_BALL, C_BALL)
+			end
+
+			local hud = string.format('pinviz  %s   ball: %s   flippers: %s', tbl.name, s.state, s.flippers_enabled and 'on' or 'off')
+			ui:draw_text(ax, by + 0.006, hud, C_TEXT)
+			local y = ay + 0.005
+			for i = 1, math.min(#s.events, 8) do
+				ui:draw_text(ax + 0.005, y, s.events[i], i == 1 and C_TEXT or 0xA0C0C0C0)
+				y = y + 0.022
+			end
+		end
+	end
+
+	-- --------------------------------------------------------------------
+	-- lifecycle
+	-- --------------------------------------------------------------------
+
+	local function start()
+		sim = nil
+		local sysname = manager.machine.system.name
+		local tbl = load_table(sysname)
+		if not tbl then
+			emu.print_info('pinviz: no table for ' .. sysname)
+			return
+		end
+		math.randomseed(1)
+		local s = {
+			tbl = tbl, ball = nil, state = 'trough', events = {}, pulses = {}, outputs = {},
+			dropped = {}, in_sensor = {}, flippers = {}, auto_flip = {}, idle_frames = 0,
+			shooter_frames = 0, flippers_enabled = false,
+		}
+		local input = manager.machine.input
+		for i, f in ipairs(tbl.flippers) do
+			s.flippers[i] = { pivot = f.pivot, length = f.length, rest = f.rest, up = f.up,
+				angle = f.rest, omega = 0, code = input:code_from_token(f.key) }
+			s.auto_flip[i] = 0
+		end
+		s.plunge_code = input:code_from_token('KEYCODE_SPACE')
+		for _, name in ipairs(tbl.serve_solenoids or {}) do watch_output(s, name) end
+		watch_output(s, tbl.outhole_solenoid)
+		if tbl.flipper_enable then watch_output(s, tbl.flipper_enable) end
+		for _, tg in ipairs(tbl.targets or {}) do if tg.reset then watch_output(s, tg.reset) end end
+		if tbl.solenoid_names then
+			for idx, _ in pairs(tbl.solenoid_names) do watch_output(s, 'solenoid' .. idx) end
+		end
+		s.draw = make_drawer(s)
+		sim = s
+		emu.print_info('pinviz: table ' .. tbl.name .. ' loaded' .. (autopilot and ' (autopilot)' or ''))
+	end
+
+	local function stop()
+		if sim then
+			for _, p in pairs(sim.pulses) do p.field:clear_value() end
+			hold_switch(sim, sim.tbl.outhole_switch, false)
+		end
+		sim = nil
+	end
+
+	start_subscription = emu.add_machine_reset_notifier(start)
+	stop_subscription = emu.add_machine_stop_notifier(stop)
+	frame_subscription = emu.add_machine_frame_notifier(process_frame)
+end
+
+return exports
