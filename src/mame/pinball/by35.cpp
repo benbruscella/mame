@@ -163,6 +163,7 @@ ToDo:
 
 #include "by35.lh"
 #include "by35_playboy.lh"
+#include "by35_centaur.lh"
 
 
 namespace {
@@ -3079,7 +3080,7 @@ GAME( 1981, eballdlx,   0,        squawk_n_talk_ay, by35_os5x, by35_state, init_
 GAME( 1981, eballd14,   eballdlx, squawk_n_talk_ay, by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Eight Ball Deluxe (rev. 14)",           MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
 GAME( 1981, embryon,    0,        squawk_n_talk,    by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Embryon",                               MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
 GAME( 1981, fathom,     0,        squawk_n_talk,    by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Fathom",                                MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
-GAME( 1981, centaur,    0,        squawk_n_talk_sia, centaur,  centaur_state, init_by35_7, ROT0, "Bally", "Centaur",                            MACHINE_MECHANICAL | MACHINE_SUPPORTS_SAVE )
+GAMEL(1981, centaur,    0,        squawk_n_talk_sia, centaur,  centaur_state, init_by35_7, ROT0, "Bally", "Centaur",                            MACHINE_MECHANICAL | MACHINE_SUPPORTS_SAVE, layout_by35_centaur )
 GAME( 1981, medusa,     0,        squawk_n_talk,    by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Medusa",                                MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
 GAME( 1982, vector,     0,        squawk_n_talk_ay, by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Vector",                                MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
 GAME( 1981, elektra,    0,        squawk_n_talk_ay, by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Elektra",                               MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
