@@ -103,53 +103,53 @@ return {
 		{ pivot = { mirror(5.8), 33.6 }, length = 3.1, rest = 148, up = 208, key = 'KEYCODE_RSHIFT' },
 	},
 
+	-- Playfield features. Positions come from the machine's layout (by35_centaur.lay),
+	-- which marks each switch with an id; the table says what each one is and how it
+	-- behaves. dir gives a segment's orientation within the layout item (h, v, d, u)
+	-- and len its length in inches.
 	slings = {
-		{ 4.3, 28.2, 5.4, 31.2, kick = 55, switch = { ':X4', 0x10 }, name = 'Left Slingshot' },
-		{ mirror(4.3), 28.2, mirror(5.4), 31.2, kick = 55, switch = { ':X4', 0x20 }, name = 'Right Slingshot' },
-		-- the "10 point rebound" switches sit on the rubbers along the lower rails
-		{ 2.4, 32.4, 5.8, 33.6, kick = 0, switch = { ':X4', 0x02 }, name = '10 Points Rebound' },
-		{ mirror(2.4), 32.4, mirror(5.8), 33.6, kick = 0, switch = { ':X4', 0x02 }, name = '10 Points Rebound' },
+		{ switch = { ':X4', 0x10 }, dir = 'u', len = 3.2, kick = 55 },
+		{ switch = { ':X4', 0x20 }, dir = 'd', len = 3.2, kick = 55 },
+		-- the "10 point rebound" rubbers along the lower rails
+		{ switch = { ':X4', 0x02 }, dir = 'd', len = 3.6, kick = 0 },
+		{ switch = { ':X4', 0x02 }, lay = ':2', dir = 'u', len = 3.6, kick = 0 },
 	},
 
 	bumpers = {
-		{ 7.6, 9.5, 1.15, kick = 65, switch = { ':X4', 0x80 }, name = 'Left Thumper Bumper' },
-		{ 12.1, 8.5, 1.15, kick = 65, switch = { ':X4', 0x40 }, name = 'Right Thumper Bumper' },
+		{ switch = { ':X4', 0x80 }, r = 1.15, kick = 65 },
+		{ switch = { ':X4', 0x40 }, r = 1.15, kick = 65 },
 	},
 
 	targets = {
-		-- O R B S, left to right, reset by Sol 9 (value 0)
-		orbs(7.4, 13.3, 8.3, 13.0, 0x80, 'Drop Target O'),
-		orbs(8.4, 13.0, 9.3, 12.75, 0x40, 'Drop Target R'),
-		orbs(10.3, 12.65, 11.2, 12.45, 0x20, 'Drop Target B'),
-		orbs(11.3, 12.45, 12.2, 12.3, 0x10, 'Drop Target S'),
-		-- right four-bank, reset by Sol 4 (value 8)
-		right4(16.8, 0x08, 'Right 4 Drop Target #1'),
-		right4(17.75, 0x04, 'Right 4 Drop Target #2'),
-		right4(18.7, 0x02, 'Right 4 Drop Target #3'),
-		right4(19.65, 0x01, 'Right 4 Drop Target #4'),
+		-- O R B S bank, reset by Sol 9 (value 0)
+		{ switch = { ':X3', 0x80 }, dir = 'h', drop = true, reset = 'solenoid0' },
+		{ switch = { ':X3', 0x40 }, dir = 'h', drop = true, reset = 'solenoid0' },
+		{ switch = { ':X3', 0x20 }, dir = 'h', drop = true, reset = 'solenoid0' },
+		{ switch = { ':X3', 0x10 }, dir = 'h', drop = true, reset = 'solenoid0' },
+		-- right four bank, reset by Sol 4 (value 8)
+		{ switch = { ':X3', 0x08 }, dir = 'v', drop = true, reset = 'solenoid8' },
+		{ switch = { ':X3', 0x04 }, dir = 'v', drop = true, reset = 'solenoid8' },
+		{ switch = { ':X3', 0x02 }, dir = 'v', drop = true, reset = 'solenoid8' },
+		{ switch = { ':X3', 0x01 }, dir = 'v', drop = true, reset = 'solenoid8' },
 		-- inline drop targets up the Queen's Chamber lane, reset by Sol 3 (value 7)
-		inline(11.5, 0x01, 'Inline Drop Target #1'),
-		inline(9.4, 0x02, 'Inline Drop Target #2'),
-		inline(7.4, 0x04, 'Inline Drop Target #3'),
-		inline(5.5, 0x08, 'Inline Drop Target #4'),
-		{ 0.85, 3.6, 2.9, 3.6, switch = { ':X2', 0x08 }, name = 'Inline Back Target' },
-		-- stand-up targets
-		{ 3.4, 19.3, 4.2, 20.1, switch = { ':X2', 0x20 }, name = 'Reset 1-4 Targets Target' },
-		{ 13.6, 6.8, 14.4, 7.6, switch = { ':X2', 0x80 }, name = 'Top Spot 1-4 Target' },
-		{ 16.8, 12.0, 17.3, 13.0, switch = { ':X2', 0x04 }, name = 'ORBS Right Lane Target' },
-		{ 9.2, 11.2, 10.4, 11.0, switch = { ':X1', 0x08 }, name = 'ORBS Back Targets' },
+		{ switch = { ':X5', 0x01 }, dir = 'h', drop = true, reset = 'solenoid7' },
+		{ switch = { ':X5', 0x02 }, dir = 'h', drop = true, reset = 'solenoid7' },
+		{ switch = { ':X5', 0x04 }, dir = 'h', drop = true, reset = 'solenoid7' },
+		{ switch = { ':X5', 0x08 }, dir = 'h', drop = true, reset = 'solenoid7' },
+		{ switch = { ':X2', 0x08 }, dir = 'h' },              -- inline back target
+		-- stand up targets
+		{ switch = { ':X2', 0x20 }, dir = 'v' },
+		{ switch = { ':X2', 0x80 }, dir = 'h' },
+		{ switch = { ':X2', 0x04 }, dir = 'v' },
+		{ switch = { ':X1', 0x08 }, dir = 'h' },              -- ORBS back targets
 	},
 
 	sensors = {
-		{ 6.6, 5.0, 0.7, switch = { ':X0', 0x10 }, name = 'Top Lane Left' },
-		{ 8.6, 4.7, 0.7, switch = { ':X0', 0x08 }, name = 'Top Lane Middle' },
-		{ 10.7, 4.4, 0.7, switch = { ':X0', 0x04 }, name = 'Top Lane Right' },
-		{ 3.4, 7.4, 0.6, switch = { ':X1', 0x08 }, name = 'Top Left Rollover Button' },
-		{ 1.3, 24.2, 0.6, switch = { ':X2', 0x02 }, name = 'Left Side Rollover Button' },
-		{ 1.2, 29.0, 0.7, switch = { ':X5', 0x80 }, name = 'Left Outlane' },
-		{ 3.2, 29.0, 0.7, switch = { ':X5', 0x40 }, name = 'Left Return Lane' },
-		{ mirror(1.2), 29.0, 0.7, switch = { ':X5', 0x10 }, name = 'Right Outlane' },
-		{ mirror(3.2), 29.0, 0.7, switch = { ':X5', 0x20 }, name = 'Right Return Lane' },
+		{ switch = { ':X0', 0x10 }, r = 0.7 }, { switch = { ':X0', 0x08 }, r = 0.7 }, { switch = { ':X0', 0x04 }, r = 0.7 },
+		{ switch = { ':X1', 0x08 }, lay = ':2', r = 0.6 },        -- top left rollover button
+		{ switch = { ':X2', 0x02 }, r = 0.6 },
+		{ switch = { ':X5', 0x80 }, r = 0.7 }, { switch = { ':X5', 0x40 }, r = 0.7 },
+		{ switch = { ':X5', 0x10 }, r = 0.7 }, { switch = { ':X5', 0x20 }, r = 0.7 },
 	},
 
 	solenoid_names = {

@@ -142,6 +142,107 @@ function pinviz.startplugin()
 	end
 
 	-- --------------------------------------------------------------------
+	-- positions from the machine's layout
+	--
+	-- A per-game layout can carry the playfield picture. Items with ids
+	-- "pinviz:pfx" and "pinviz:pfy" mark the playfield panel's extent, and an
+	-- item with id "pinviz:<port>:<mask>" (a second one "...:2") marks where the
+	-- switch is. The table then only has to say what each switch is.
+	-- --------------------------------------------------------------------
+
+	local function layout_reader(tbl)
+		local view = manager.machine.render.ui_target.current_view
+		if not view then return nil end
+		local function item(id)
+			local ok, it = pcall(function() return view.items[id] end)
+			if ok then return it end
+			return nil
+		end
+		local pfx, pfy = item('pinviz:pfx'), item('pinviz:pfy')
+		if not (pfx and pfy) then return nil end
+		local bx, by = pfx.bounds, pfy.bounds
+		local x0, xw = bx.x0, bx.x1 - bx.x0
+		local y0, yh = by.y0, by.y1 - by.y0
+		if xw <= 0 or yh <= 0 then return nil end
+		local r = { x0 = x0, xw = xw, y0 = y0, yh = yh }
+		-- playfield inches to UI coordinates, matching the layout's own stretch
+		function r.to_ui(x, y) return x0 + x / tbl.width * xw, y0 + y / tbl.length * yh end
+		-- rectangle of a switch item in inches: centre and half sizes
+		function r.rect(sw, suffix)
+			local port = sw[1]:gsub('^:', '')
+			local id = string.format('pinviz:%s:0x%02x', port, sw[2]) .. (suffix or '')
+			local it = item(id)
+			if not it then return nil end
+			local b = it.bounds
+			local ix0, ix1 = (b.x0 - x0) / xw * tbl.width, (b.x1 - x0) / xw * tbl.width
+			local iy0, iy1 = (b.y0 - y0) / yh * tbl.length, (b.y1 - y0) / yh * tbl.length
+			return { cx = (ix0 + ix1) / 2, cy = (iy0 + iy1) / 2, hw = (ix1 - ix0) / 2, hh = (iy1 - iy0) / 2, x0 = ix0, y0 = iy0, x1 = ix1, y1 = iy1 }
+		end
+		return r
+	end
+
+	-- give each feature coordinates: from the layout when it has the switch, else
+	-- from the numbers in the table. Segment features take an orientation letter
+	-- (h, v, d, u) and an optional length in inches.
+	local function place_features(s)
+		local tbl, lay = s.tbl, s.lay
+		local placed, kept, dropped = 0, 0, 0
+		local function segment_from(rc, f)
+			local dir, len = f.dir or 'h', f.len
+			local x0, y0, x1, y1
+			if dir == 'v' then x0, y0, x1, y1 = rc.cx, rc.y0, rc.cx, rc.y1
+			elseif dir == 'd' then x0, y0, x1, y1 = rc.x0, rc.y0, rc.x1, rc.y1
+			elseif dir == 'u' then x0, y0, x1, y1 = rc.x0, rc.y1, rc.x1, rc.y0
+			else x0, y0, x1, y1 = rc.x0, rc.cy, rc.x1, rc.cy end
+			if len then
+				local dx, dy = x1 - x0, y1 - y0
+				local l = math.sqrt(dx * dx + dy * dy)
+				if l > 1e-6 then
+					local k = len / l / 2
+					x0, y0, x1, y1 = rc.cx - dx * k, rc.cy - dy * k, rc.cx + dx * k, rc.cy + dy * k
+				end
+			end
+			f[1], f[2], f[3], f[4] = x0, y0, x1, y1
+		end
+		local function circle_from(rc, f)
+			f[1], f[2] = rc.cx, rc.cy
+			f[3] = f.r or f[3] or math.max(rc.hw, rc.hh)
+		end
+		local function name_from_port(f)
+			if f.name or not f.switch then return end
+			local port = manager.machine.ioport.ports[f.switch[1]]
+			local fld = port and port:field(f.switch[2])
+			if fld then f.name = fld.name end
+		end
+		local function resolve(list, kind)
+			local out = {}
+			for _, f in ipairs(list or {}) do
+				name_from_port(f)
+				local rc = lay and f.switch and lay.rect(f.switch, f.lay)
+				if rc then
+					if kind == 'circle' then circle_from(rc, f) else segment_from(rc, f) end
+					emu.print_verbose(string.format('pinviz: %-28s from layout at %.1f,%.1f %s', f.name or '?', f[1], f[2], kind == 'circle' and string.format('r=%.2f', f[3]) or string.format('to %.1f,%.1f', f[3], f[4])))
+					placed = placed + 1
+					out[#out + 1] = f
+				elseif f[1] then
+					kept = kept + 1
+					out[#out + 1] = f
+				else
+					dropped = dropped + 1
+					log(s, 'no position for ' .. (f.name or '?'))
+				end
+			end
+			return out
+		end
+		tbl.sensors = resolve(tbl.sensors, 'circle')
+		tbl.bumpers = resolve(tbl.bumpers, 'circle')
+		tbl.saucers = resolve(tbl.saucers, 'circle')
+		tbl.targets = resolve(tbl.targets, 'segment')
+		tbl.slings = resolve(tbl.slings, 'segment')
+		return placed, kept, dropped
+	end
+
+	-- --------------------------------------------------------------------
 	-- ball and geometry
 	-- --------------------------------------------------------------------
 
@@ -484,18 +585,26 @@ function pinviz.startplugin()
 		return function()
 			local W, H = target.width, target.height
 			if W <= 0 or H <= 0 then W, H = 640, 480 end
-			local panel_w = 0.5 * W
-			local margin = 0.02 * H
-			local ppi = math.min((panel_w * 0.72) / tbl.width, (H - 2 * margin) / tbl.length)
-			local ox, oy = margin, margin
-			local sx, sy = ppi / W, ppi / H
-			local function to(x, y) return (ox + x * ppi) / W, (oy + y * ppi) / H end
+			local overlay = s.lay ~= nil
+			local to
+			if overlay then
+				-- draw straight onto the layout's playfield picture
+				to = s.lay.to_ui
+			else
+				local panel_w = 0.5 * W
+				local margin = 0.02 * H
+				local ppi = math.min((panel_w * 0.72) / tbl.width, (H - 2 * margin) / tbl.length)
+				local ox, oy = margin, margin
+				to = function(x, y) return (ox + x * ppi) / W, (oy + y * ppi) / H end
+			end
 
-			-- opaque panel over the layout, then the playfield
-			ui:draw_box(0, 0, 0.5, 1, C_PANEL, C_PANEL)
 			local ax, ay = to(0, 0)
 			local bx, by = to(tbl.width, tbl.length)
-			ui:draw_box(ax, ay, bx, by, C_EDGE, C_FELT)
+			if not overlay then
+				-- opaque panel over the layout, then the playfield
+				ui:draw_box(0, 0, 0.5, 1, C_PANEL, C_PANEL)
+				ui:draw_box(ax, ay, bx, by, C_EDGE, C_FELT)
+			end
 
 			local function line(x0, y0, x1, y1, c)
 				local ux0, uy0 = to(x0, y0)
@@ -532,7 +641,8 @@ function pinviz.startplugin()
 				end
 			end
 
-			for _, w in ipairs(tbl.walls) do line(w[1], w[2], w[3], w[4], C_WALL) end
+			local c_wall = overlay and 0x80D0D8E8 or C_WALL
+			for _, w in ipairs(tbl.walls) do line(w[1], w[2], w[3], w[4], c_wall) end
 			for _, p in ipairs(tbl.posts or {}) do disc(p[1], p[2], p[3], C_POST, 4) end
 			for _, g in ipairs(tbl.gates or {}) do line(g[1], g[2], g[3], g[4], C_GATE) end
 
@@ -572,20 +682,33 @@ function pinviz.startplugin()
 				circle(b.x, b.y, b.r, C_BALL_RIM, 12)
 			end
 
-			-- text column to the right of the table
-			local tx = bx + 0.012
 			local lh = 0.03
-			ui:draw_text(tx, ay, 'pinviz ' .. tbl.name, C_TITLE)
-			ui:draw_text(tx, ay + lh, 'ball ' .. s.state, C_TEXT)
-			ui:draw_text(tx, ay + 2 * lh, 'flippers ' .. (s.flippers_enabled and 'on' or 'off'), C_TEXT)
-			local y = ay + 4 * lh
-			for i = 1, math.min(#s.events, 14) do
-				local e = s.events[i]
-				if #e > 30 then e = e:sub(1, 30) end
-				ui:draw_text(tx, y, e, i == 1 and C_TEXT or C_TEXT_DIM)
-				y = y + lh
+			if overlay then
+				-- a short event strip over the bottom of the picture
+				local n = math.min(#s.events, 4)
+				local top = by - (n + 1) * lh - 0.01
+				ui:draw_box(ax, top, bx, by, 0xB0101820, 0xB0101820)
+				ui:draw_text(ax + 0.005, top + 0.005, string.format('pinviz  ball %s  flippers %s', s.state, s.flippers_enabled and 'on' or 'off'), C_TITLE)
+				for i = 1, n do
+					local e = s.events[i]
+					if #e > 34 then e = e:sub(1, 34) end
+					ui:draw_text(ax + 0.005, top + 0.005 + i * lh, e, i == 1 and C_TEXT or C_TEXT_DIM)
+				end
+			else
+				-- text column to the right of the table
+				local tx = bx + 0.012
+				ui:draw_text(tx, ay, 'pinviz ' .. tbl.name, C_TITLE)
+				ui:draw_text(tx, ay + lh, 'ball ' .. s.state, C_TEXT)
+				ui:draw_text(tx, ay + 2 * lh, 'flippers ' .. (s.flippers_enabled and 'on' or 'off'), C_TEXT)
+				local y = ay + 4 * lh
+				for i = 1, math.min(#s.events, 14) do
+					local e = s.events[i]
+					if #e > 30 then e = e:sub(1, 30) end
+					ui:draw_text(tx, y, e, i == 1 and C_TEXT or C_TEXT_DIM)
+					y = y + lh
+				end
+				ui:draw_text(tx, by - lh, 'Shift flip  Space plunge', C_TEXT_DIM)
 			end
-			ui:draw_text(tx, by - lh, 'Shift flip  Space plunge', C_TEXT_DIM)
 		end
 	end
 
@@ -608,6 +731,9 @@ function pinviz.startplugin()
 			shooter_frames = 0, flippers_enabled = false, saucer_cooldown = 0, saucer_frames = 0, relay_frames = 0,
 			flash = {},
 		}
+		s.lay = layout_reader(tbl)
+		local placed, kept, dropped = place_features(s)
+		emu.print_info(string.format('pinviz: %d features placed from the layout, %d from the table, %d without a position', placed, kept, dropped))
 		local input = manager.machine.input
 		for i, f in ipairs(tbl.flippers) do
 			s.flippers[i] = { pivot = f.pivot, length = f.length, rest = f.rest, up = f.up,
