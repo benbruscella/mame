@@ -766,7 +766,9 @@ function pinviz.startplugin()
 				end
 			end
 
-			local c_wall = overlay and 0x80D0D8E8 or C_WALL
+			-- over a layout the walls are the only thing showing the playfield shape, so
+			-- draw them solid; a muted blue keeps them behind the features
+			local c_wall = overlay and 0xFF6E86A8 or C_WALL
 			for _, w in ipairs(tbl.walls) do line(w[1], w[2], w[3], w[4], c_wall) end
 			for _, p in ipairs(tbl.posts or {}) do disc(p[1], p[2], p[3], C_POST, 4) end
 			for _, g in ipairs(tbl.gates or {}) do line(g[1], g[2], g[3], g[4], C_GATE) end
