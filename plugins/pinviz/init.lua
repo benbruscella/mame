@@ -166,9 +166,14 @@ function pinviz.startplugin()
 		local x0, xw = bx.x0, bx.x1 - bx.x0
 		local y0, yh = by.y0, by.y1 - by.y0
 		if xw <= 0 or yh <= 0 then return nil end
+		-- how much of the table the layout's panel covers. A mockup layout often draws
+		-- only the playfield and leaves no room for the shooter lane, so a table can say
+		-- the panel is narrower than the table is.
+		local lw = tbl.lay_width or tbl.width
+		local ll = tbl.lay_length or tbl.length
 		local r = { x0 = x0, xw = xw, y0 = y0, yh = yh }
 		-- playfield inches to UI coordinates, matching the layout's own stretch
-		function r.to_ui(x, y) return x0 + x / tbl.width * xw, y0 + y / tbl.length * yh end
+		function r.to_ui(x, y) return x0 + x / lw * xw, y0 + y / ll * yh end
 		-- rectangle of a switch item in inches: centre and half sizes
 		function r.rect(sw, suffix)
 			local port = sw[1]:gsub('^:', '')
@@ -176,8 +181,8 @@ function pinviz.startplugin()
 			local it = item(id)
 			if not it then return nil end
 			local b = it.bounds
-			local ix0, ix1 = (b.x0 - x0) / xw * tbl.width, (b.x1 - x0) / xw * tbl.width
-			local iy0, iy1 = (b.y0 - y0) / yh * tbl.length, (b.y1 - y0) / yh * tbl.length
+			local ix0, ix1 = (b.x0 - x0) / xw * lw, (b.x1 - x0) / xw * lw
+			local iy0, iy1 = (b.y0 - y0) / yh * ll, (b.y1 - y0) / yh * ll
 			return { cx = (ix0 + ix1) / 2, cy = (iy0 + iy1) / 2, hw = (ix1 - ix0) / 2, hh = (iy1 - iy0) / 2, x0 = ix0, y0 = iy0, x1 = ix1, y1 = iy1 }
 		end
 		return r

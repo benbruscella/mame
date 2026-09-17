@@ -6,27 +6,63 @@ The emulated machine is the real thing: the ROM, switch matrix, solenoids,
 lamps, displays and sound. This plugin adds the one part MAME does not have,
 a ball. It is enough physics to play a game and watch the driver react, not a
 simulator: one ball, walls, flippers, slingshots, pop bumpers, drop and
-stand-up targets, saucers, lanes and the outhole, drawn as lines over the left
-part of the window.
-
-A table definition in `tables/<system>.lua` says which input port field each
-feature closes and how it behaves. Where things are can come from the machine's
-own layout: a per-game layout (see `src/mame/layout/by35_centaur.lay`) marks
-the playfield panel with items whose ids are `pinviz:pfx` and `pinviz:pfy`, and
-each switch with an item whose id is `pinviz:<port>:<mask>` (a second item for
-the same switch gets `:2`). pinviz reads those positions at start, so the layout
-is the single place a playfield is drawn, and the table adds only what a picture
-cannot say: walls, rails, flippers, physics and the solenoid that resets or kicks
-each thing. Features may also carry their own coordinates for machines whose
-layout has no ids (Playboy). Solenoid outputs from the driver drive the
-ball the other way: serving, the outhole kick, saucer kickers, drop target
-resets and the flipper enable relay. Tables exist for `centaur` and `playboy`.
+stand-up targets, saucers, lanes, one-way gates and the outhole, drawn over
+the playfield panel.
 
     mame centaur -plugin pinviz
 
 Keys: left and right Shift for the flippers (or whatever the table names),
 Space to plunge. The usual MAME keys coin up and start the game.
 
-Environment variables: `PINVIZ_AUTOPILOT=1` plays by itself, which makes a
-driver regression test out of it; `PINVIZ_LOG=1` prints the event log to the
-console.
+Environment variables:
+
+- `PINVIZ_AUTOPILOT=1` plays by itself, which turns the plugin into a driver
+  regression test.
+- `PINVIZ_LOG=1` prints every switch closure and solenoid fire to the console.
+- `PINVIZ_FLIPTEST=<speed>` drops balls onto the left flipper at that speed in
+  inches per second and reports how many were hit and how many passed through,
+  as a check on the flipper collision.
+
+## Where a table comes from
+
+Two sources, so that neither repeats the other.
+
+**The machine's layout says where things are.** A per-game layout marks its
+playfield panel with items whose ids are `pinviz:pfx` and `pinviz:pfy`, and each
+playfield switch with an item whose id is `pinviz:<port>:<mask>`. A second item
+for the same switch gets a `:2` suffix, a third `:3`, and so on. pinviz reads
+those positions when the machine starts. The layout is then the single place a
+playfield is drawn, and adding the ids to an existing layout is most of the work
+of supporting a machine. `src/mame/layout/by35_centaur.lay` and the two by17
+layouts are examples.
+
+**The table in `tables/<system>.lua` says what each switch is**, and supplies
+what a picture cannot: walls, rails, flippers, physics constants, and which
+solenoid serves the ball, kicks the outhole, resets a drop target bank or
+releases a saucer. A feature identifies its switch, its kind, and for a segment
+an orientation within the layout item (`h`, `v`, `d`, `u`) and a length in
+inches. A feature may also carry its own coordinates, for a machine whose layout
+has no ids; Playboy does that.
+
+A layout that draws only the playfield leaves no room for the shooter lane, so a
+table can set `lay_width` and `lay_length` to say how much of itself the panel
+covers. The rest of the table, the lane included, sits outside the picture.
+
+`tables/bally_body.lua` holds the parts every machine on Bally's solid state
+cabinet shares: the outline, the shooter lane and its gate, the outlane and
+inlane rails, and the flippers. A table for one of those machines takes the
+skeleton and adds only its own features.
+
+## Machines
+
+| Table | Layout supplies positions | Notes |
+|---|---|---|
+| `centaur` | yes | Geometry traced from a playfield photograph. |
+| `playboy` | no, coordinates in the table | Its layout has no ids yet. |
+| `matahari` | yes | Walls come from the shared Bally body, not the real playfield. |
+| `pwerplay` | yes | Same, and untested: the ROM set was not available. |
+
+For Mata Hari and Power Play only the switch positions are real. The walls are
+the generic cabinet, so the ball does not yet reach every feature the way it
+would on the machine. Tightening those needs a playfield reference for each, the
+way Centaur's did.
