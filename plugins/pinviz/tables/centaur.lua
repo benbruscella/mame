@@ -35,7 +35,7 @@ local walls = {
 	{ 0, W / 2, 0, L },
 	{ W, W / 2, W, L },
 	-- shooter lane wall
-	{ LANE, W / 2 + 1.0, LANE, L },
+	{ LANE, W / 2 + 1.6, LANE, L },
 	-- lane guides above the top lanes (three lanes between four posts)
 	{ 7.4, 1.5, 7.4, 4.6 }, { 9.3, 1.5, 9.3, 4.6 }, { 11.2, 1.5, 11.2, 4.6 }, { 13.1, 1.5, 13.1, 4.6 },
 	-- wall behind the left ORBS drop target bank and the right 4 bank
@@ -66,6 +66,10 @@ return {
 	wall_restitution = 0.45,
 
 	walls = walls,
+	-- one way gate flap over the top of the shooter lane, sloping down into the
+	-- playfield: a ball coming round the arc rolls off it, a launched ball passes up
+	-- through it. Points are listed so the arc side gives a positive cross product.
+	gates = { { W, W / 2 + 0.2, LANE - 0.4, W / 2 + 1.6 } },
 	posts = posts,
 
 	-- serve: a ball appears in the shooter lane on either of these, then is plunged

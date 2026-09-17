@@ -244,6 +244,14 @@ function pinviz.startplugin()
 		for _, p in ipairs(tbl.posts or {}) do
 			collide_circle(b, p[1], p[2], p[3], 0.6)
 		end
+		-- one way gates (shooter lane top): solid for a ball on the blocked side of the
+		-- directed segment (positive cross product), open from the other side
+		for _, g in ipairs(tbl.gates or {}) do
+			local cross = (g[3] - g[1]) * (b.y - g[2]) - (g[4] - g[2]) * (b.x - g[1])
+			if cross > 0 then
+				collide_segment(b, g[1], g[2], g[3], g[4], 0.3)
+			end
+		end
 
 		for i, f in ipairs(s.flippers) do
 			local x0, y0, x1, y1 = flipper_ends(f)
@@ -285,6 +293,18 @@ function pinviz.startplugin()
 			end
 		end
 
+		for i, sc in ipairs(tbl.saucers or {}) do
+			local dx, dy = b.x - sc[1], b.y - sc[2]
+			if s.saucer_cooldown == 0 and (dx * dx + dy * dy) < (sc[3] * sc[3]) then
+				b.x, b.y, b.vx, b.vy = sc[1], sc[2], 0, 0
+				s.state = 'saucer'
+				s.saucer = i
+				hold_switch(s, sc.switch, true)
+				log(s, 'ball in ' .. sc.name)
+				return
+			end
+		end
+
 		for i, sn in ipairs(tbl.sensors or {}) do
 			local dx, dy = b.x - sn[1], b.y - sn[2]
 			local inside = (dx * dx + dy * dy) < (sn[3] * sn[3])
@@ -298,6 +318,20 @@ function pinviz.startplugin()
 		if b.x < b.r then b.x, b.vx = b.r, math.abs(b.vx) end
 		if b.x > tbl.width - b.r then b.x, b.vx = tbl.width - b.r, -math.abs(b.vx) end
 		if b.y < b.r then b.y, b.vy = b.r, math.abs(b.vy) end
+
+		-- a ball that has stopped against geometry gets a nudge, as a player would
+		local speed2 = b.vx * b.vx + b.vy * b.vy
+		if speed2 < 0.25 then
+			s.still = (s.still or 0) + 1
+			if s.still > 3 * 60 * SUBSTEPS then
+				b.vx = b.vx + (math.random() - 0.5) * 40
+				b.vy = b.vy - 20 - math.random() * 20
+				s.still = 0
+				log(s, 'nudge (ball stuck)')
+			end
+		else
+			s.still = 0
+		end
 
 		if b.y > tbl.drain_y then
 			s.state = 'outhole'
@@ -363,12 +397,35 @@ function pinviz.startplugin()
 				serve(s, name)
 			end
 		end
+		s.saucer_cooldown = math.max(0, s.saucer_cooldown - 1)
+		if s.state == 'saucer' then
+			local sc = tbl.saucers[s.saucer]
+			s.saucer_frames = s.saucer_frames + 1
+			-- if the game never fires the kicker (feature not lit) the ball rolls on
+			local timeout = s.saucer_frames > (sc.timeout or 6) * 60
+			if rose(s, sc.solenoid) or timeout then
+				hold_switch(s, sc.switch, false)
+				local kick = timeout and (sc.timeout_kick or { 0, 15 }) or sc.kick
+				s.ball.vx, s.ball.vy = kick[1], kick[2]
+				s.state = 'play'
+				s.saucer_cooldown = 30
+				log(s, (timeout and 'rolls out of ' or 'kicked out of ') .. sc.name)
+			end
+		else
+			s.saucer_frames = 0
+		end
+		-- the flipper relay is pulsed during the power-up self test; only a relay that
+		-- stays on means a game is in progress
+		if s.flippers_enabled then s.relay_frames = s.relay_frames + 1 else s.relay_frames = 0 end
+		if tbl.serve_on_flipper_enable and s.state == 'trough' and s.relay_frames == 30 then
+			serve(s, 'flippers enabled')
+		end
 		if s.state == 'outhole' and rose(s, tbl.outhole_solenoid) then
 			hold_switch(s, tbl.outhole_switch, false)
 			-- on this hardware the outhole kick delivers the ball to the shooter lane
 			serve(s, 'outhole kick')
 		end
-		if s.state == 'trough' and s.flippers_enabled then
+		if s.state == 'trough' and s.relay_frames > 30 then
 			s.idle_frames = s.idle_frames + 1
 			if s.idle_frames > 4 * 60 then
 				serve(s, 'game in progress, no ball')
@@ -380,7 +437,7 @@ function pinviz.startplugin()
 		if s.state == 'shooter' then
 			s.shooter_frames = s.shooter_frames + 1
 			local input = manager.machine.input
-			if input:code_pressed(s.plunge_code) or autopilot or s.shooter_frames > 3 * 60 then
+			if input:code_pressed(s.plunge_code) or (autopilot and s.flippers_enabled) or (s.flippers_enabled and s.shooter_frames > 3 * 60) then
 				plunge(s)
 			end
 		end
@@ -388,7 +445,16 @@ function pinviz.startplugin()
 		local dt = FRAME_DT / SUBSTEPS
 		for i = 1, SUBSTEPS do step(s, dt) end
 
-		s.draw()
+		if console_log then
+			s.log_frames = (s.log_frames or 0) + 1
+			if s.log_frames % 180 == 0 and s.ball then
+				print(string.format('[pinviz] ball %s at (%.1f, %.1f) v=(%.1f, %.1f)', s.state, s.ball.x, s.ball.y, s.ball.vx, s.ball.vy))
+			end
+		end
+	end
+
+	local function frame_done()
+		if sim then sim.draw() end
 	end
 
 	-- --------------------------------------------------------------------
@@ -437,6 +503,7 @@ function pinviz.startplugin()
 
 			for _, w in ipairs(tbl.walls) do line(w[1], w[2], w[3], w[4], C_WALL) end
 			for _, p in ipairs(tbl.posts or {}) do circle(p[1], p[2], p[3], C_WALL, 8) end
+			for _, g in ipairs(tbl.gates or {}) do line(g[1], g[2], g[3], g[4], C_SENSOR) end
 			for _, sl in ipairs(tbl.slings or {}) do line(sl[1], sl[2], sl[3], sl[4], C_SLING) end
 			for _, bp in ipairs(tbl.bumpers or {}) do circle(bp[1], bp[2], bp[3], C_BUMPER) end
 			for i, tg in ipairs(tbl.targets or {}) do
@@ -444,6 +511,7 @@ function pinviz.startplugin()
 				line(tg[1], tg[2], tg[3], tg[4], c)
 			end
 			for i, sn in ipairs(tbl.sensors or {}) do circle(sn[1], sn[2], sn[3], C_SENSOR, 8) end
+			for i, sc in ipairs(tbl.saucers or {}) do circle(sc[1], sc[2], sc[3], C_SLING, 10) end
 
 			for _, f in ipairs(s.flippers) do
 				local x0, y0, x1, y1 = flipper_ends(f)
@@ -486,7 +554,7 @@ function pinviz.startplugin()
 		local s = {
 			tbl = tbl, ball = nil, state = 'trough', events = {}, pulses = {}, outputs = {},
 			dropped = {}, in_sensor = {}, flippers = {}, auto_flip = {}, idle_frames = 0,
-			shooter_frames = 0, flippers_enabled = false,
+			shooter_frames = 0, flippers_enabled = false, saucer_cooldown = 0, saucer_frames = 0, relay_frames = 0,
 		}
 		local input = manager.machine.input
 		for i, f in ipairs(tbl.flippers) do
@@ -499,6 +567,7 @@ function pinviz.startplugin()
 		watch_output(s, tbl.outhole_solenoid)
 		if tbl.flipper_enable then watch_output(s, tbl.flipper_enable) end
 		for _, tg in ipairs(tbl.targets or {}) do if tg.reset then watch_output(s, tg.reset) end end
+		for _, sc in ipairs(tbl.saucers or {}) do watch_output(s, sc.solenoid) end
 		if tbl.solenoid_names then
 			for idx, _ in pairs(tbl.solenoid_names) do watch_output(s, 'solenoid' .. idx) end
 		end
@@ -511,6 +580,7 @@ function pinviz.startplugin()
 		if sim then
 			for _, p in pairs(sim.pulses) do p.field:clear_value() end
 			hold_switch(sim, sim.tbl.outhole_switch, false)
+			for _, sc in ipairs(sim.tbl.saucers or {}) do hold_switch(sim, sc.switch, false) end
 		end
 		sim = nil
 	end
@@ -518,6 +588,7 @@ function pinviz.startplugin()
 	start_subscription = emu.add_machine_reset_notifier(start)
 	stop_subscription = emu.add_machine_stop_notifier(stop)
 	frame_subscription = emu.add_machine_frame_notifier(process_frame)
+	emu.register_frame_done(frame_done, 'pinviz')
 end
 
 return exports
