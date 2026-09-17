@@ -999,7 +999,6 @@ Any state="9" items are not displayed and are only used for object alignment
 			<element ref="Draw_White"><bounds x="0" y="480" width="320" height="1" /></element>
 			<element ref="Draw_White" id="pinviz:pfy"><bounds x="0" y="0" width="1" height="480" /></element>
 			<element ref="Draw_White"><bounds x="320" y="0" width="1" height="480" /></element>
-			<element ref="Title_Centaur"><bounds x="100" y="440" width="120" height="16" /></element>
 
 			<!-- rails and lane guides that can be drawn with axis aligned rectangles -->
 			<element ref="Draw_White"><bounds x="292.3" y="131.4" width="2.4" height="348.6" /></element>
@@ -1134,7 +1133,7 @@ Any state="9" items are not displayed and are only used for object alignment
 			<element ref="Draw_White"><bounds x="640" y="0" width="1" height="320" /></element>
 
 
-			<element ref="Title_Bally"><bounds x="430" y="18" width="105" height="30" /></element>
+			<element ref="Title_Centaur"><bounds x="430" y="18" width="105" height="30" /></element>
 
 
 			<!-- Player 1 Score -->
