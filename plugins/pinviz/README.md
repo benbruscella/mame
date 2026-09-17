@@ -60,7 +60,7 @@ skeleton and adds only its own features.
 | `centaur` | yes | Geometry traced from a playfield photograph. |
 | `playboy` | no, coordinates in the table | Its layout has no ids yet. |
 | `matahari` | yes | Walls come from the shared Bally body, not the real playfield. |
-| `pwerplay` | yes | Same, and untested: the ROM set was not available. |
+| `pwerplay` | yes | Same. Plays a full five ball game. |
 | `hs_l4` | yes | Williams System 11. Switches and solenoids are from Williams' tech chart; the layout arranges the real features rather than tracing the playfield. |
 
 A machine with a ball trough will not start a game until the trough reads full, so
@@ -74,7 +74,8 @@ A table can also set `output_prefix`, because not every driver calls its outputs
 High Speed shows FACTORY SETTING on a fresh NVRAM and needs one reset before it
 will accept a coin, as the `s11.cpp` header says.
 
-For Mata Hari and Power Play only the switch positions are real. The walls are
-the generic cabinet, so the ball does not yet reach every feature the way it
-would on the machine. Tightening those needs a playfield reference for each, the
-way Centaur's did.
+For Mata Hari, Power Play and High Speed only the switch positions are real. The
+walls are a generic cabinet, so the ball does not travel the paths it would on
+the machine, and play is unevenly distributed: Mata Hari's ball spends most of
+its time on the two upper pop bumpers. Tightening those needs a playfield
+reference for each, the way Centaur's did.

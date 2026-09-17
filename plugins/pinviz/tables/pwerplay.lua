@@ -64,15 +64,19 @@ t.saucers = {
 }
 
 t.sensors = {
-	{ name = 'Left Rollover 1', switch = { ':X3', 0x10 }, r = 0.7 }, { switch = { ':X4', 0x02 }, r = 0.7 }, { switch = { ':X0', 0x08 }, r = 0.7 },
-	{ name = 'Right Rollover 1', switch = { ':X3', 0x20 }, r = 0.7 }, { switch = { ':X4', 0x04 }, r = 0.7 }, { switch = { ':X0', 0x10 }, r = 0.7 },
-	{ name = 'Centre Rollover', switch = { ':X3', 0x02 }, r = 0.7 },                          -- centre rollover
-	{ name = 'Top Rollover', switch = { ':X4', 0x01 }, r = 0.7 },                          -- top rollover
-	{ name = 'Lower Rollover', switch = { ':X3', 0x01 }, r = 0.7 },                          -- lower rollovers, same switch
-	{ name = 'Lower Rollover', switch = { ':X3', 0x01 }, lay = ':2', r = 0.7 },
-	{ name = 'Left Outlane', switch = { ':X3', 0x08 }, r = 0.7 },   -- left outlane
-	{ name = 'Right Outlane', switch = { ':X3', 0x04 }, r = 0.7 },   -- right outlane
-	{ name = 'Left Return Lane', switch = { ':X0', 0x01 }, r = 0.7 },   -- return lanes, same switch
+	{ name = 'Left Rollover 1', switch = { ':X3', 0x10 }, r = 0.7 },
+	{ name = 'Left Rollover 2', switch = { ':X4', 0x02 }, r = 0.7 },
+	{ name = 'Left Rollover 3', switch = { ':X0', 0x08 }, r = 0.7 },
+	{ name = 'Right Rollover 1', switch = { ':X3', 0x20 }, r = 0.7 },
+	{ name = 'Right Rollover 2', switch = { ':X4', 0x04 }, r = 0.7 },
+	{ name = 'Right Rollover 3', switch = { ':X0', 0x10 }, r = 0.7 },
+	{ name = 'Centre Rollover', switch = { ':X3', 0x02 }, r = 0.7 },
+	{ name = 'Top Rollover', switch = { ':X4', 0x01 }, r = 0.7 },
+	{ name = 'Lower Rollover Left', switch = { ':X3', 0x01 }, r = 0.7 },
+	{ name = 'Lower Rollover Right', switch = { ':X3', 0x01 }, lay = ':2', r = 0.7 },
+	{ name = 'Left Outlane', switch = { ':X3', 0x08 }, r = 0.7 },
+	{ name = 'Right Outlane', switch = { ':X3', 0x04 }, r = 0.7 },
+	{ name = 'Left Return Lane', switch = { ':X0', 0x01 }, r = 0.7 },
 	{ name = 'Right Return Lane', switch = { ':X0', 0x01 }, lay = ':2', r = 0.7 },
 }
 

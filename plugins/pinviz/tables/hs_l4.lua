@@ -34,8 +34,8 @@ local more = {
 	{ 2.6, 31.5, CX - 3.4, 34.6 }, { mirror(2.6), 31.5, mirror(CX - 3.4), 34.6 },
 	-- sling undersides
 	{ 3.6, 31.0, 5.4, 31.0 }, { mirror(3.6), 31.0, mirror(5.4), 31.0 },
-	-- guides beside the ball trough
-	{ CX - 2.4, 35.6, CX - 2.4, L }, { mirror(CX - 2.4), 35.6, mirror(CX - 2.4), L },
+	-- apron edges that funnel a drained ball towards the outhole
+	{ 0, 36.4, CX - 2.4, 39.6 }, { LANE, 36.4, mirror(CX - 2.4), 39.6 },
 }
 for _, s in ipairs(more) do walls[#walls + 1] = s end
 
@@ -63,7 +63,7 @@ return {
 	outhole_solenoid = 'out0',
 	outhole_switch = { ':X1', 0x01 },
 	drain_y = 40.6,
-	drain_x = { CX - 2.4, mirror(CX - 2.4) },   -- the trough sits between its guides
+	drain_x = { 0, LANE },   -- anything off the playfield reaches the outhole
 
 	flippers = {
 		{ pivot = { CX - 3.4, 34.6 }, length = 3.1, rest = 32, up = -28, key = 'KEYCODE_LSHIFT' },

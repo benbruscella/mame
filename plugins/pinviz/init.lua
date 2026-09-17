@@ -41,6 +41,10 @@ function pinviz.startplugin()
 	local FRAME_DT = 1 / 60
 	local SWITCH_FRAMES = 5     -- how long a hit holds a matrix switch closed
 	local BALL_RESTITUTION_MIN_SPEED = 2.0
+	-- A pinball leaves the plunger at about 100 in/s and a flipper can send it faster,
+	-- but nothing on a playfield reaches this. Clamping keeps a bad contact, where the
+	-- ball is squeezed between two surfaces and pumped, from throwing it off the table.
+	local MAX_SPEED = 260
 
 	-- --------------------------------------------------------------------
 	-- helpers
@@ -483,10 +487,28 @@ function pinviz.startplugin()
 			s.in_sensor[i] = inside
 		end
 
+		-- keep the ball to a speed the real thing could reach
+		local sp2 = b.vx * b.vx + b.vy * b.vy
+		if sp2 > MAX_SPEED * MAX_SPEED then
+			local k = MAX_SPEED / math.sqrt(sp2)
+			b.vx, b.vy = b.vx * k, b.vy * k
+		end
+
 		-- keep the ball on the table
 		if b.x < b.r then b.x, b.vx = b.r, math.abs(b.vx) end
 		if b.x > tbl.width - b.r then b.x, b.vx = tbl.width - b.r, -math.abs(b.vx) end
 		if b.y < b.r then b.y, b.vy = b.r, math.abs(b.vy) end
+
+		-- last resort: if the ball has left the table despite all of the above, treat
+		-- it as drained rather than letting it fall for ever
+		if b.y > tbl.length + 1 or b.y < -1 then
+			b.x = math.min(math.max(b.x, b.r), tbl.width - b.r)
+			b.y, b.vx, b.vy = tbl.drain_y or (tbl.length - 1), 0, 0
+			s.state = 'outhole'
+			hold_switch(s, tbl.outhole_switch, true)
+			log(s, 'ball left the table, counted as drained')
+			return
+		end
 
 		-- a ball that has stopped against geometry gets a nudge, as a player would
 		local speed2 = b.vx * b.vx + b.vy * b.vy
