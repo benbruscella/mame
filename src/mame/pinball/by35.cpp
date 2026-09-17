@@ -1,5 +1,5 @@
 // license:BSD-3-Clause
-// copyright-holders:Robbbert, Quench
+// copyright-holders:Robbbert, Quench, Ben Bruscella
 /********************************************************************************************
 
     PINBALL
@@ -115,14 +115,33 @@ Black Beauty (shuffle)
 - The Nuova Bell Games from Dark Shadow onwards use inhouse designed circuit boards. The MPU board contains enhancements for full
   CPU address space, larger ROMs, 6802 CPU, Toshiba TC5517 CMOS RAM (2kb) for battery backup that can be jumpered in nibble or byte mode, etc.
 
+Status:
+- Centaur is playable: boots, attract mode, coin-up, start, scoring and the self-test
+  menus all work. Balls 4 and 5 are held in the trough (switches 1 and 2), which is what
+  the game checks before leaving its power-up ball search. Hit Backspace to put the ball
+  in the outhole. Multiball is not simulated.
+
+Hardware notes (Bally):
+- Switch strobe 5 (switches 41-48, connector A4J4-5) is driven from one of U11's port B
+  continuous solenoid lines. Centaur's game ROM pulses PB4 (constant at $50B7 is $10).
+  Games that use it select the bit via the strobe5 constructor parameter.
+- The auxiliary lamp driver board (AS-2518-43 / -52) receives the same address and data
+  lines as the main lamp driver but is latched by lamp strobe 2 on U11 CA2, the same pin
+  that drives the diagnostic LED. Its lamps are outputs lamp60 to lamp119.
+- The solenoid expander (AS-2518-66) on Centaur is fed from Q11 on the solenoid driver
+  board, so it needs no modelling beyond naming the solenoid.
+- Centaur references: PinWiki Centaur page (lamp, solenoid and switch charts),
+  PinWiki Bally/Stern page (board level), Pinitech switch matrix chart, and the game's
+  own self-test, which fires solenoids in manual order and gave the decoder value to
+  solenoid number mapping used in the Centaur solenoid table. PinMAME's by35.c
+  (BSD-3-Clause) was consulted for the lamp strobe 2 and switch strobe 5 behaviour.
+
 ToDo:
 - The Nuova Bell games don't boot.
 - The Bell games have major problems
 - Sound for the non-Bally games
 - Dips, Inputs, Solenoids vary per game
-- Bally: Add Strobe 5 (ST5) for extra inputs on later games
-- Bally: Add support for Solenoid Expanders on later games
-- Bally: Add support for Aux Lamp Expander on later games
+- Bally: Multiball trough simulation for games with more than one ball
 - Mechanical
 
 *********************************************************************************************/
@@ -164,6 +183,7 @@ public:
 	template <int Param> int outhole_x0();
 	template <int Param> int drop_target_x0();
 	template <int Param> int kickback_x3();
+	DECLARE_INPUT_CHANGED_MEMBER(outhole_changed);
 
 	void by35(machine_config &config) ATTR_COLD;
 	void nuovo(machine_config &config) ATTR_COLD;
@@ -177,9 +197,10 @@ public:
 protected:
 	typedef uint8_t solenoid_feature_data[20][4];
 
-	by35_state(machine_config const &mconfig, device_type type, char const *tag, solenoid_feature_data const &solenoid_features)
+	by35_state(machine_config const &mconfig, device_type type, char const *tag, solenoid_feature_data const &solenoid_features, uint8_t strobe5_mask = 0)
 		: genpin_class(mconfig, type, tag)
 		, m_solenoid_features(solenoid_features)
+		, m_strobe5_mask(strobe5_mask)
 		, m_maincpu(*this, "maincpu")
 		, m_nvram(*this, "nvram")
 		, m_pia_u10(*this, "pia_u10")
@@ -196,7 +217,9 @@ protected:
 		, m_io_x2(*this, "X2")
 		, m_io_x3(*this, "X3")
 		, m_io_x4(*this, "X4")
+		, m_io_x5(*this, "X5")
 		, m_lamps(*this, "lamp%u", 0U)
+		, m_led0(*this, "led0")
 		, m_digits(*this, "digit%u%u", 1U, 1U)
 		, m_solenoids(*this, "solenoid%u", 0U)
 		, m_as2888(*this, "as2888")
@@ -221,9 +244,11 @@ protected:
 	int u10_ca1_r();
 	void u10_ca2_w(int state);
 	void u10_cb2_w(int state);
+	void u11_ca2_w(int state);
 	void u11_cb2_w(int state);
 	virtual void machine_start() override ATTR_COLD;
 	virtual void machine_reset() override ATTR_COLD;
+	virtual void momentary_solenoid_fired(uint8_t sol) { }   // per-game ball handling hook
 	TIMER_DEVICE_CALLBACK_MEMBER(timer_z_freq);
 	TIMER_DEVICE_CALLBACK_MEMBER(timer_z_pulse);
 	TIMER_DEVICE_CALLBACK_MEMBER(u11_timer);
@@ -239,15 +264,18 @@ protected:
 
 	static solenoid_feature_data const s_solenoid_features_default;
 
+	uint8_t m_io_hold_x[6]{};   // switches held closed by the simulation (balls in outhole/trough/saucers, drop targets)
+
 private:
 	bool m_u10_ca2 = false;
 	bool m_u10_cb2 = false;
 	bool m_u11_cb2 = false;
 	bool m_7d = false;
 	uint8_t m_segment[6]{};
-	uint8_t m_lamp_decode = 0U;
+	uint8_t m_lamp_decode = 0U;    // lamp address latched by lamp strobe 1 (U10 CB2), main lamp driver
+	uint8_t m_lamp_decode2 = 0U;   // lamp address latched by lamp strobe 2 (U11 CA2), auxiliary lamp driver
 	solenoid_feature_data const &m_solenoid_features;
-	uint8_t m_io_hold_x[6]{};
+	uint8_t const m_strobe5_mask;  // U11 port B bit used as switch strobe 5, 0 if the game has none
 	required_device<m6800_cpu_device> m_maincpu;
 	required_shared_ptr<uint8_t> m_nvram;
 	required_device<pia6821_device> m_pia_u10;
@@ -264,7 +292,9 @@ private:
 	required_ioport m_io_x2;
 	required_ioport m_io_x3;
 	required_ioport m_io_x4;
-	output_finder<15 * 4> m_lamps;
+	optional_ioport m_io_x5;
+	output_finder<2 * 15 * 4> m_lamps;   // 0-59 main lamp driver, 60-119 auxiliary lamp driver
+	output_finder<> m_led0;
 	output_finder<5, 8> m_digits;
 	output_finder<20> m_solenoids;
 	optional_device<bally_as2888_device> m_as2888;
@@ -286,6 +316,20 @@ public:
 
 protected:
 	static solenoid_feature_data const s_solenoid_features_playboy;
+};
+
+class centaur_state : public by35_state
+{
+public:
+	centaur_state(machine_config const &mconfig, device_type type, char const *tag)
+		: by35_state(mconfig, type, tag, s_solenoid_features_centaur, 0x10)   // switch strobe 5 on U11 PB4
+	{ }
+
+protected:
+	virtual void machine_reset() override ATTR_COLD;
+	virtual void momentary_solenoid_fired(uint8_t sol) override;
+
+	static solenoid_feature_data const s_solenoid_features_centaur;
 };
 
 void by35_state::by35_map(address_map &map)
@@ -915,6 +959,75 @@ static INPUT_PORTS_START( playboy )
 	PORT_ADJUSTER( 50, "RT2 - Tone Sustain" )
 INPUT_PORTS_END
 
+/*
+    Centaur. Switch numbers and names from the manual's switch matrix as reproduced on PinWiki
+    and the Pinitech chart. Strobe 5 (switches 41-48) comes from U11 PB4 on this game.
+    The two sources disagree on which slingshot is 37 and which is 38; PinWiki's matrix is used.
+*/
+static INPUT_PORTS_START( centaur )
+	PORT_INCLUDE( by35_os5x )
+
+	PORT_MODIFY("X0")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_UNUSED ) // 1 Ball Trough #4, held closed by the driver
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_UNUSED ) // 2 Ball Trough #5, held closed by the driver
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Top Lane Right") PORT_CODE(KEYCODE_OPENBRACE)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Top Lane Middle") PORT_CODE(KEYCODE_CLOSEBRACE)
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Top Lane Left") PORT_CODE(KEYCODE_BACKSLASH)
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_START1 ) PORT_NAME("Credit Button")
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Outhole") PORT_CODE(KEYCODE_BACKSPACE) PORT_CHANGED_MEMBER(DEVICE_SELF, FUNC(by35_state::outhole_changed), 0)
+
+	PORT_MODIFY("X1")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_COIN3 ) PORT_NAME("Coin Chute III (Right)")
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_COIN1 ) PORT_NAME("Coin Chute I (Left)")
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_COIN2 ) PORT_NAME("Coin Chute II (Middle)")
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Top Left Rollover Button / ORBS Back Targets / Target Behind Right Bumper") PORT_CODE(KEYCODE_ENTER)
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_UNUSED )
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_UNUSED )
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_TILT )   PORT_NAME("Tilt")
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_TILT )   PORT_NAME("Slam Tilt") PORT_CODE(KEYCODE_EQUALS)
+
+	PORT_MODIFY("X2")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Ball Trough #1") PORT_CODE(KEYCODE_K)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Left Side Rollover Button") PORT_CODE(KEYCODE_J)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("ORBS Right Lane Target") PORT_CODE(KEYCODE_H)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Inline Back Target") PORT_CODE(KEYCODE_G)
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Flipper Buttons") PORT_CODE(KEYCODE_LSHIFT) PORT_CODE(KEYCODE_RSHIFT)
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Reset 1-4 Targets Target") PORT_CODE(KEYCODE_D)
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_UNUSED )
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Top Spot 1-4 Target") PORT_CODE(KEYCODE_A)
+
+	PORT_MODIFY("X3")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Right 4 Drop Target #4 (Bottom)") PORT_CODE(KEYCODE_O)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Right 4 Drop Target #3") PORT_CODE(KEYCODE_I)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Right 4 Drop Target #2") PORT_CODE(KEYCODE_U)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Right 4 Drop Target #1 (Top)") PORT_CODE(KEYCODE_Y)
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Drop Target S") PORT_CODE(KEYCODE_R)
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Drop Target B") PORT_CODE(KEYCODE_E)
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Drop Target R") PORT_CODE(KEYCODE_W)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Drop Target O") PORT_CODE(KEYCODE_Q)
+
+	PORT_MODIFY("X4")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("End Of Trough") PORT_CODE(KEYCODE_COMMA)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("10 Points Rebound") PORT_CODE(KEYCODE_M)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_UNUSED )
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_UNUSED )
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Left Slingshot") PORT_CODE(KEYCODE_V)
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Right Slingshot") PORT_CODE(KEYCODE_C)
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Right Thumper Bumper") PORT_CODE(KEYCODE_X)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Left Thumper Bumper") PORT_CODE(KEYCODE_Z)
+
+	PORT_START("X5")
+	PORT_BIT( 0x01, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Inline Drop Target #1") PORT_CODE(KEYCODE_P)
+	PORT_BIT( 0x02, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Inline Drop Target #2") PORT_CODE(KEYCODE_0)
+	PORT_BIT( 0x04, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Inline Drop Target #3") PORT_CODE(KEYCODE_9)
+	PORT_BIT( 0x08, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Inline Drop Target #4") PORT_CODE(KEYCODE_MINUS)
+	PORT_BIT( 0x10, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Right Outlane") PORT_CODE(KEYCODE_INSERT)
+	PORT_BIT( 0x20, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Right Return Lane") PORT_CODE(KEYCODE_DEL)
+	PORT_BIT( 0x40, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Left Return Lane") PORT_CODE(KEYCODE_HOME)
+	PORT_BIT( 0x80, IP_ACTIVE_HIGH, IPT_KEYPAD ) PORT_NAME("Left Outlane") PORT_CODE(KEYCODE_END)
+INPUT_PORTS_END
+
 static INPUT_PORTS_START( frontier )
 	PORT_INCLUDE( by35_os40 )
 
@@ -1039,6 +1152,14 @@ int by35_state::kickback_x3()
 	return ((m_io_hold_x[port] >> bit_shift) & 1);
 }
 
+INPUT_CHANGED_MEMBER( by35_state::outhole_changed )
+{
+	// Ball dropped into the outhole (strobe 0, switch 8): keep the switch closed until the
+	// outhole solenoid kicks it out (see the solenoid feature table). Tapping the key is enough.
+	if (newval)
+		m_io_hold_x[0] |= 0x80;
+}
+
 template <int Param>
 int by35_state::drop_target_x0()
 {
@@ -1123,6 +1244,16 @@ void by35_state::u10_cb2_w(int state)
 	m_u10_cb2 = state;
 }
 
+void by35_state::u11_ca2_w(int state)
+{
+	// Diagnostic LED, and lamp strobe 2 for the auxiliary lamp driver board
+
+	m_led0 = state;
+
+	if (state == true)
+		m_lamp_decode2 = m_u10a & 0x0f;
+}
+
 void by35_state::u11_cb2_w(int state)
 {
 	// Handle sound
@@ -1158,6 +1289,8 @@ void by35_state::u10_a_w(uint8_t data)
 	/*** Update the Lamp latched outputs ***/
 	if ((data & 0x0f) == 0x0f)
 	{
+		// Main and auxiliary lamp drivers see the same data lines; each has its own latched address.
+		// Address 0x0f is the rest position, no lamp selected.
 		if ((m_lamp_decode & 0x0f) < 0x0f)
 		{
 			if (!m_lamps[(m_lamp_decode & 0x0f)+00]) m_lamps[(m_lamp_decode & 0x0f)+00] = !BIT(data, 4);
@@ -1165,9 +1298,12 @@ void by35_state::u10_a_w(uint8_t data)
 			if (!m_lamps[(m_lamp_decode & 0x0f)+30]) m_lamps[(m_lamp_decode & 0x0f)+30] = !BIT(data, 6);
 			if (!m_lamps[(m_lamp_decode & 0x0f)+45]) m_lamps[(m_lamp_decode & 0x0f)+45] = !BIT(data, 7);
 		}
-		else
+		if ((m_lamp_decode2 & 0x0f) < 0x0f)
 		{
-			// Rest output - all lamps are off
+			if (!m_lamps[(m_lamp_decode2 & 0x0f)+60]) m_lamps[(m_lamp_decode2 & 0x0f)+60] = !BIT(data, 4);
+			if (!m_lamps[(m_lamp_decode2 & 0x0f)+75]) m_lamps[(m_lamp_decode2 & 0x0f)+75] = !BIT(data, 5);
+			if (!m_lamps[(m_lamp_decode2 & 0x0f)+90]) m_lamps[(m_lamp_decode2 & 0x0f)+90] = !BIT(data, 6);
+			if (!m_lamps[(m_lamp_decode2 & 0x0f)+105]) m_lamps[(m_lamp_decode2 & 0x0f)+105] = !BIT(data, 7);
 		}
 	}
 
@@ -1178,20 +1314,24 @@ uint8_t by35_state::u10_b_r()
 {
 	uint8_t data = 0;
 
+	// Switch returns, plus any switches the simulation is holding closed
 	if (BIT(m_u10a, 0))
-		data |= m_io_x0->read();
+		data |= m_io_x0->read() | m_io_hold_x[0];
 
 	if (BIT(m_u10a, 1))
-		data |= m_io_x1->read();
+		data |= m_io_x1->read() | m_io_hold_x[1];
 
 	if (BIT(m_u10a, 2))
-		data |= m_io_x2->read();
+		data |= m_io_x2->read() | m_io_hold_x[2];
 
 	if (BIT(m_u10a, 3))
-		data |= m_io_x3->read();
+		data |= m_io_x3->read() | m_io_hold_x[3];
 
 	if (BIT(m_u10a, 4))
-		data |= m_io_x4->read();
+		data |= m_io_x4->read() | m_io_hold_x[4];
+
+	if (m_strobe5_mask && (m_u11b & m_strobe5_mask) && m_io_x5.found())
+		data |= m_io_x5->read() | m_io_hold_x[5];
 
 	if (BIT(m_u10a, 5))
 		data |= m_io_dsw0->read();
@@ -1274,6 +1414,9 @@ void by35_state::u11_b_w(uint8_t data)
 					m_samples->start(m_solenoid_features[(data & 0x0f)][0], m_solenoid_features[(data & 0x0f)][1]);
 			}
 
+			if (!m_solenoids[data & 0x0f])
+				momentary_solenoid_fired(data & 0x0f);
+
 			m_solenoids[data & 0x0f] = true;
 
 			if (m_solenoid_features[(data & 0x0f)][3])  // Reset/release relevant switch after firing Solenoid
@@ -1286,49 +1429,53 @@ void by35_state::u11_b_w(uint8_t data)
 	}
 
 
-	if ((m_u11b & 0x10) && ((data & 0x10)==0))
+	// A port B bit used as switch strobe 5 is not a solenoid
+	uint8_t const cont = data & ~m_strobe5_mask;
+	uint8_t const cont_prev = m_u11b & ~m_strobe5_mask;
+
+	if ((cont_prev & 0x10) && ((cont & 0x10)==0))
 	{
 		m_solenoids[16] = true;
 		if (m_solenoid_features[16][0] != 0xff)
 			m_samples->start(m_solenoid_features[16][0], m_solenoid_features[16][1]);
 	}
-	else if ((data & 0x10) && ((m_u11b & 0x10)==0))
+	else if ((cont & 0x10) && ((cont_prev & 0x10)==0))
 	{
 		m_solenoids[16] = false;
 		if (m_solenoid_features[16][0] != 0xff)
 			m_samples->start(m_solenoid_features[16][0], m_solenoid_features[16][2]);
 	}
-	if ((m_u11b & 0x20) && ((data & 0x20)==0))
+	if ((cont_prev & 0x20) && ((cont & 0x20)==0))
 	{
 		m_solenoids[17] = true;                   // Coin Lockout Coil engage
 		if (m_solenoid_features[17][0] != 0xff)
 			m_samples->start(m_solenoid_features[17][0], m_solenoid_features[17][1]);
 	}
-	else if ((data & 0x20) && ((m_u11b & 0x20)==0))
+	else if ((cont & 0x20) && ((cont_prev & 0x20)==0))
 	{
 		m_solenoids[17] = false;                  // Coin Lockout Coil release
 		if (m_solenoid_features[17][0] != 0xff)
 			m_samples->start(m_solenoid_features[17][0], m_solenoid_features[17][2]);
 	}
-	if ((m_u11b & 0x40) && ((data & 0x40)==0))
+	if ((cont_prev & 0x40) && ((cont & 0x40)==0))
 	{
 		m_solenoids[18] = true;                   // Flipper Enable Relay engage
 		if (m_solenoid_features[18][0] != 0xff)
 			m_samples->start(m_solenoid_features[18][0], m_solenoid_features[18][1]);
 	}
-	else if ((data & 0x40) && ((m_u11b & 0x40)==0))
+	else if ((cont & 0x40) && ((cont_prev & 0x40)==0))
 	{
 		m_solenoids[18] = false;                  // Flipper Enable Relay release
 		if (m_solenoid_features[18][0] != 0xff)
 			m_samples->start(m_solenoid_features[18][0], m_solenoid_features[18][2]);
 	}
-	if ((m_u11b & 0x80) && ((data & 0x80)==0))
+	if ((cont_prev & 0x80) && ((cont & 0x80)==0))
 	{
 		m_solenoids[19] = true;
 		if (m_solenoid_features[19][0] != 0xff)
 			m_samples->start(m_solenoid_features[19][0], m_solenoid_features[19][1]);
 	}
-	else if ((data & 0x80) && ((m_u11b & 0x80)==0))
+	else if ((cont & 0x80) && ((cont_prev & 0x80)==0))
 	{
 		m_solenoids[19] = false;
 		if (m_solenoid_features[19][0] != 0xff)
@@ -1447,6 +1594,34 @@ by35_state::solenoid_feature_data const playboy_state::s_solenoid_features_playb
 /*19*/  { 0xff, 0xff, 0xff,  0x00 }
 };
 
+by35_state::solenoid_feature_data const centaur_state::s_solenoid_features_centaur =
+{
+// Index is the 4-bit code written to U11 PB0-3; the solenoid number is from the manual and
+// PinWiki chart, confirmed by the game's solenoid self-test which fires them in manual order.
+//  { Sound Channel, Sound Sample, Switch Strobe, Switch Return Mask }
+/*00*/  { 0x03, 0x0b,  0x00, 0x00 },        // Sol  9 ORBS drop target reset (Q2)
+/*01*/  { 0xff, 0xff,  0x00, 0x00 },        // Sol 10 Right drop target #1 knockdown (Q1)
+/*02*/  { 0xff, 0xff,  0x00, 0x00 },        // Sol 11 Right drop target #2 knockdown (Q5)
+/*03*/  { 0xff, 0xff,  0x00, 0x00 },        // Sol 12 Right drop target #3 knockdown (Q6)
+/*04*/  { 0xff, 0xff,  0x00, 0x00 },        // Sol 13 Right drop target #4 knockdown (Q7)
+/*05*/  { 0x04, 0x06,  0x00, 0x00 },        // Sol  2 Knocker (Q3)
+/*06*/  { 0x01, 0x09,  0x00, 0x7f },        // Sol  1 Outhole (Q4), releases the outhole switch, trough switches stay
+/*07*/  { 0x03, 0x0b,  0x00, 0x00 },        // Sol  3 Inline drop target reset (Q8)
+/*08*/  { 0x03, 0x0b,  0x00, 0x00 },        // Sol  4 Right 4 drop target reset (Q13)
+/*09*/  { 0x02, 0x00,  0x00, 0x00 },        // Sol  5 Left thumper bumper (Q14)
+/*10*/  { 0x02, 0x00,  0x00, 0x00 },        // Sol  6 Right thumper bumper (Q9)
+/*11*/  { 0x02, 0x07,  0x00, 0x00 },        // Sol  7 Left slingshot (Q10)
+/*12*/  { 0x02, 0x07,  0x00, 0x00 },        // Sol  8 Right slingshot (Q12)
+/*13*/  { 0x05, 0x10,  0x00, 0x00 },        // Sol 15 Ball kick to playfield (Q11 via solenoid expander A15), serves the ball
+/*14*/  { 0x05, 0x10,  0x00, 0x00 },        // Sol 14 Ball release (Q16)
+/*15*/  { 0xff, 0xff,  0x00, 0x00 },        // None - all momentary solenoids off
+//  { Sound Channel, Sound engage, Sound release, Not Used }
+/*16*/  { 0xff, 0xff, 0xff,  0x00 },        // PB4 is switch strobe 5 on this game
+/*17*/  { 0x00, 0x0c, 0x0d,  0x00 },        // Sol 16 Coin lockout coil (Q19)
+/*18*/  { 0x00, 0x0e, 0x0f,  0x00 },        // Sol 17 Flipper enable relay (Q15)
+/*19*/  { 0xff, 0xff, 0xff,  0x00 }         // Sol 18 Magnet (Q18)
+};
+
 void by35_state::machine_start()
 {
 	genpin_class::machine_start();
@@ -1461,6 +1636,7 @@ void by35_state::machine_start()
 	save_item(NAME(m_7d));
 	save_item(NAME(m_segment));
 	save_item(NAME(m_lamp_decode));
+	save_item(NAME(m_lamp_decode2));
 	save_item(NAME(m_io_hold_x));
 }
 
@@ -1473,8 +1649,29 @@ void by35_state::machine_reset()
 	m_u11a = 0;
 	m_u11b = 0;
 	m_lamp_decode = 0x0f;
+	m_lamp_decode2 = 0x0f;
 	m_io_hold_x[0] = 0x80;  // Put ball in Outhole on startup
 	m_io_hold_x[1] = m_io_hold_x[2] = m_io_hold_x[3] = m_io_hold_x[4] = m_io_hold_x[5] = 0;
+}
+
+void centaur_state::machine_reset()
+{
+	by35_state::machine_reset();
+
+	// Five ball game. The power-up ball search waits for the trough #4 and #5 switches
+	// (switches 1 and 2) and the outhole (switch 8) before entering attract mode.
+	// All five balls home, outhole empty.
+	m_io_hold_x[0] = 0x03;
+}
+
+void centaur_state::momentary_solenoid_fired(uint8_t sol)
+{
+	// Serving the first ball of a game takes a ball out of the trough, so trough
+	// position 5 opens. It stays open while the game is played: the outhole kicker
+	// returns a drained ball to the shooter lane, not to the trough, and the game will
+	// not process a drain while the trough reads full. Multiball is not simulated.
+	if (sol == 13)  // Sol 15 Ball kick to playfield
+		m_io_hold_x[0] &= ~0x02;
 }
 
 void by35_state::by35(machine_config &config)
@@ -1512,7 +1709,7 @@ void by35_state::by35(machine_config &config)
 	m_pia_u11->writepb_handler().set(FUNC(by35_state::u11_b_w));
 	m_pia_u11->ca1_w(false);
 	m_pia_u11->cb1_w(0); /* Pin 32 on MPU J5 AID connector tied low */
-	m_pia_u11->ca2_handler().set_output("led0");
+	m_pia_u11->ca2_handler().set(FUNC(by35_state::u11_ca2_w));
 	m_pia_u11->cb2_handler().set(FUNC(by35_state::u11_cb2_w));
 	m_pia_u11->irqa_handler().set_inputline(m_maincpu, M6800_IRQ_LINE);
 	m_pia_u11->irqb_handler().set_inputline(m_maincpu, M6800_IRQ_LINE);
@@ -2909,7 +3106,7 @@ GAME( 1981, eballdlx,   0,        squawk_n_talk_ay, by35_os5x, by35_state, init_
 GAME( 1981, eballd14,   eballdlx, squawk_n_talk_ay, by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Eight Ball Deluxe (rev. 14)",           MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
 GAME( 1981, embryon,    0,        squawk_n_talk,    by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Embryon",                               MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
 GAME( 1981, fathom,     0,        squawk_n_talk,    by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Fathom",                                MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
-GAME( 1981, centaur,    0,        squawk_n_talk,    by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Centaur",                               MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
+GAME( 1981, centaur,    0,        squawk_n_talk,    centaur,   centaur_state, init_by35_7, ROT0, "Bally", "Centaur",                            MACHINE_MECHANICAL | MACHINE_SUPPORTS_SAVE )
 GAME( 1981, medusa,     0,        squawk_n_talk,    by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Medusa",                                MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
 GAME( 1982, vector,     0,        squawk_n_talk_ay, by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Vector",                                MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
 GAME( 1981, elektra,    0,        squawk_n_talk_ay, by35_os5x, by35_state, init_by35_7, ROT0, "Bally", "Elektra",                               MACHINE_MECHANICAL | MACHINE_NOT_WORKING | MACHINE_SUPPORTS_SAVE )
