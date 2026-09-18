@@ -97,3 +97,28 @@ walls are a generic cabinet, so the ball does not travel the paths it would on
 the machine, and play is unevenly distributed: Mata Hari's ball spends most of
 its time on the two upper pop bumpers. Tightening those needs a playfield
 reference for each, the way Centaur's did.
+
+## Checking it still works
+
+Two checks, split by whether they need a machine.
+
+`scripts/build/check_pinviz.py` compares each table against the layout its
+machine uses, and needs neither a build nor a ROM, so CI runs it. A table names
+a switch and the layout marks that switch with an id; nothing at build or run
+time ties the two together, so an id that is renamed or dropped shows up only as
+a feature quietly missing from the table. It also catches an id that appears
+twice, whose position would be ambiguous, and a layout with no playfield extent
+markers, and it reports ids no table uses yet.
+
+`plugins/pinviz/selftest.py --rompath roms` exercises the plugin on every machine
+that has a table and needs both, so it is run by hand:
+
+- geometry, from `PINVIZ_DUMP`: no rubber or target may cross a wall, since the
+  acute corner that leaves holds a ball against both surfaces, and every feature
+  must have a position
+- flippers, from `PINVIZ_FLIPTEST`: nothing may pass through the bat at any speed
+  a playfield can produce, and a shot should leave faster than it arrived
+- play, from `PINVIZ_AUTOPILOT`: the machine must serve balls and see switch
+  closures, with no Lua errors
+
+Pass `--quick` for shorter runs, or machine names to narrow it down.
