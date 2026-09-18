@@ -1047,11 +1047,11 @@ Any state="9" items are not displayed and are only used for object alignment
 			     observable in play, because these coils are fired from their own
 			     switches in hardware rather than by the CPU. -->
 			<!-- Slingshots: Sol 17 left, Sol 18 right -->
-			<element ref="Solenoid_SlingShot_Left" name="out19"><bounds x="57.7" y="316.0" width="30.0" height="40.0" /></element>
-			<element ref="Switch_Leaf_Vertical" inputtag="X6" inputmask="0x01" id="pinviz:X6:0x01"><bounds x="68.7" y="331.5" width="8.0" height="9.0" /></element>
+			<element ref="Solenoid_SlingShot_Left" name="out19" id="pinviz:X6:0x01"><bounds x="57.7" y="316.0" width="30.0" height="40.0" /></element>
+			<element ref="Switch_Leaf_Vertical" inputtag="X6" inputmask="0x01"><bounds x="68.7" y="331.5" width="8.0" height="9.0" /></element>
 			<element ref="Key_V"><bounds x="68.2" y="353.2" width="9.0" height="9.0" /></element>
-			<element ref="Solenoid_SlingShot_Right" name="out17"><bounds x="206.2" y="316.0" width="30.0" height="40.0" /></element>
-			<element ref="Switch_Leaf_Vertical" inputtag="X6" inputmask="0x02" id="pinviz:X6:0x02"><bounds x="217.2" y="331.5" width="8.0" height="9.0" /></element>
+			<element ref="Solenoid_SlingShot_Right" name="out17" id="pinviz:X6:0x02"><bounds x="206.2" y="316.0" width="30.0" height="40.0" /></element>
+			<element ref="Switch_Leaf_Vertical" inputtag="X6" inputmask="0x02"><bounds x="217.2" y="331.5" width="8.0" height="9.0" /></element>
 			<element ref="Key_C"><bounds x="216.7" y="353.2" width="9.0" height="9.0" /></element>
 
 			<!-- Three stoplight target banks, red yellow green -->

@@ -76,9 +76,9 @@ return {
 	},
 
 	bumpers = {
-		{ name = 'Upper Left Jet Bumper', switch = { ':X4', 0x01 }, r = 1.15, kick = 65 },
-		{ name = 'Lower Left Jet Bumper', switch = { ':X4', 0x02 }, r = 1.15, kick = 65 },
-		{ name = 'Right Jet Bumper', switch = { ':X4', 0x04 }, r = 1.15, kick = 65 },
+		{ name = 'Upper Left Jet Bumper', switch = { ':X4', 0x01 }, r = 1.575, kick = 65 },
+		{ name = 'Lower Left Jet Bumper', switch = { ':X4', 0x02 }, r = 1.575, kick = 65 },
+		{ name = 'Right Jet Bumper', switch = { ':X4', 0x04 }, r = 1.575, kick = 65 },
 	},
 
 	targets = {

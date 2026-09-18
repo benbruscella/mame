@@ -761,37 +761,37 @@ Any state="9" items are not displayed and are only used for object alignment
 
 
 			<!-- Pop Bumper Left Upper -->
-			<element name="solenoid8"  ref="Solenoid_Bumper_Yellow_Star">           <bounds x="084" y="095" width="80" height="80" /></element>
-			<element ref="Switch_Bumper_Yellow_Star" inputtag="X4" inputmask="0x80" id="pinviz:X4:0x80"><bounds x="084" y="095" width="80" height="80" /></element>
-			<element ref="Lamp_Bumper_Silver_100">                                  <bounds x="084" y="095" width="80" height="80" /></element>
+			<element name="solenoid8"  ref="Solenoid_Bumper_Yellow_Star">           <bounds x="105.1" y="116.1" width="37.7" height="37.7" /></element>
+			<element ref="Switch_Bumper_Yellow_Star" inputtag="X4" inputmask="0x80" id="pinviz:X4:0x80"><bounds x="105.1" y="116.1" width="37.7" height="37.7" /></element>
+			<element ref="Lamp_Bumper_Silver_100">                                  <bounds x="105.1" y="116.1" width="37.7" height="37.7" /></element>
 			<element ref="Key_Z">                                                   <bounds x="119" y="144" width="09" height="09" /></element>
 
 			<!-- Pop Bumper Right Upper -->
-			<element name="solenoid9"  ref="Solenoid_Bumper_Yellow_Star">           <bounds x="157" y="095" width="80" height="80" /></element>
-			<element ref="Switch_Bumper_Yellow_Star" inputtag="X4" inputmask="0x40" id="pinviz:X4:0x40"><bounds x="157" y="095" width="80" height="80" /></element>
-			<element ref="Lamp_Bumper_Silver_100">                                  <bounds x="157" y="095" width="80" height="80" /></element>
+			<element name="solenoid9"  ref="Solenoid_Bumper_Yellow_Star">           <bounds x="178.1" y="116.1" width="37.7" height="37.7" /></element>
+			<element ref="Switch_Bumper_Yellow_Star" inputtag="X4" inputmask="0x40" id="pinviz:X4:0x40"><bounds x="178.1" y="116.1" width="37.7" height="37.7" /></element>
+			<element ref="Lamp_Bumper_Silver_100">                                  <bounds x="178.1" y="116.1" width="37.7" height="37.7" /></element>
 			<element ref="Key_X">                                                   <bounds x="191" y="144" width="09" height="09" /></element>
 
 			<!-- Pop Bumper Left Bottom -->
-			<element name="solenoid7"  ref="Solenoid_Bumper_Red_Star">           <bounds x="039" y="136" width="80" height="80" /></element>
-			<element ref="Switch_Bumper_Red_Star" inputtag="X4" inputmask="0x20" id="pinviz:X4:0x20"><bounds x="039" y="136" width="80" height="80" /></element>
-			<element name="lamp53" ref="Lamp_Bumper_Silver_1000">                <bounds x="039" y="136" width="80" height="80" /></element>
+			<element name="solenoid7"  ref="Solenoid_Bumper_Red_Star">           <bounds x="60.1" y="157.1" width="37.7" height="37.7" /></element>
+			<element ref="Switch_Bumper_Red_Star" inputtag="X4" inputmask="0x20" id="pinviz:X4:0x20"><bounds x="60.1" y="157.1" width="37.7" height="37.7" /></element>
+			<element name="lamp53" ref="Lamp_Bumper_Silver_1000">                <bounds x="60.1" y="157.1" width="37.7" height="37.7" /></element>
 			<element ref="Key_C">                                                <bounds x="073" y="140" width="09" height="09" /></element>
 
 			<!-- Pop Bumper Right Bottom -->
-			<element name="solenoid10" ref="Solenoid_Bumper_Red_Star">           <bounds x="202" y="136" width="80" height="80" /></element>
-			<element ref="Switch_Bumper_Red_Star" inputtag="X4" inputmask="0x10" id="pinviz:X4:0x10"><bounds x="202" y="136" width="80" height="80" /></element>
-			<element name="lamp38" ref="Lamp_Bumper_Silver_1000">                <bounds x="202" y="136" width="80" height="80" /></element>
+			<element name="solenoid10" ref="Solenoid_Bumper_Red_Star">           <bounds x="223.1" y="157.1" width="37.7" height="37.7" /></element>
+			<element ref="Switch_Bumper_Red_Star" inputtag="X4" inputmask="0x10" id="pinviz:X4:0x10"><bounds x="223.1" y="157.1" width="37.7" height="37.7" /></element>
+			<element name="lamp38" ref="Lamp_Bumper_Silver_1000">                <bounds x="223.1" y="157.1" width="37.7" height="37.7" /></element>
 			<element ref="Key_V">                                                <bounds x="236" y="140" width="09" height="09" /></element>
 
 			<!-- Slingshot Left -->
 			<element name="solenoid11" ref="Solenoid_SlingShot_Left">          <bounds x="035" y="320" width="69" height="80" /></element>
-			<element ref="Switch_Leaf_Vertical" inputtag="X4" inputmask="0x08" id="pinviz:X4:0x08"><bounds x="060" y="384" width="08" height="09" /></element>
+			<element ref="Switch_Leaf_Vertical" inputtag="X4" inputmask="0x08"><bounds x="060" y="384" width="08" height="09" /></element>
 			<element ref="Key_B">                                              <bounds x="060" y="375" width="09" height="09" /></element>
 
 			<!-- Slingshot Right -->
 			<element name="solenoid13" ref="Solenoid_SlingShot_Right">         <bounds x="221" y="320" width="69" height="80" /></element>
-			<element ref="Switch_Leaf_Vertical" inputtag="X4" inputmask="0x04" id="pinviz:X4:0x04"><bounds x="257" y="384" width="08" height="09" /></element>
+			<element ref="Switch_Leaf_Vertical" inputtag="X4" inputmask="0x04"><bounds x="257" y="384" width="08" height="09" /></element>
 			<element ref="Key_N">                                              <bounds x="257" y="375" width="09" height="09" /></element>
 
 

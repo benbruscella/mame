@@ -860,10 +860,45 @@ function pinviz.startplugin()
 				ui:draw_box(ax, ay, bx, by, C_EDGE, C_FELT)
 			end
 
+			-- Over a layout the picture belongs inside the playfield panel. A table can
+			-- reach past it, because these Bally panels draw the playfield but not the
+			-- shooter lane beside it, and anything drawn past the edge lands on the next
+			-- panel along. Everything is clipped to the panel, so a ball up the shooter
+			-- lane is simply out of shot rather than sitting on the backbox.
+			local clip_l, clip_t, clip_r, clip_b = 0, 0, 1, 1
+			if overlay then
+				clip_l, clip_t = to(0, 0)
+				clip_r, clip_b = to(s.lay.lw, s.lay.ll)
+			end
+			local function wline(ax0, ay0, ax1, ay1, c)
+				-- Liang-Barsky against the panel
+				local dx, dy = ax1 - ax0, ay1 - ay0
+				local t0, t1 = 0, 1
+				local p = { -dx, dx, -dy, dy }
+				local q = { ax0 - clip_l, clip_r - ax0, ay0 - clip_t, clip_b - ay0 }
+				for i = 1, 4 do
+					if p[i] == 0 then
+						if q[i] < 0 then return end
+					else
+						local r = q[i] / p[i]
+						if p[i] < 0 then
+							if r > t1 then return elseif r > t0 then t0 = r end
+						else
+							if r < t0 then return elseif r < t1 then t1 = r end
+						end
+					end
+				end
+				ui:draw_line(ax0 + t0 * dx, ay0 + t0 * dy, ax0 + t1 * dx, ay0 + t1 * dy, c)
+			end
+			local function wbox(bx0, by0, bx1, by1, c)
+				bx0, by0 = math.max(bx0, clip_l), math.max(by0, clip_t)
+				bx1, by1 = math.min(bx1, clip_r), math.min(by1, clip_b)
+				if bx1 > bx0 and by1 > by0 then ui:draw_box(bx0, by0, bx1, by1, c, c) end
+			end
 			local function line(x0, y0, x1, y1, c)
 				local ux0, uy0 = to(x0, y0)
 				local ux1, uy1 = to(x1, y1)
-				ui:draw_line(ux0, uy0, ux1, uy1, c)
+				wline(ux0, uy0, ux1, uy1, c)
 			end
 			local function thick(x0, y0, x1, y1, c, w)
 				local dx, dy = x1 - x0, y1 - y0
@@ -882,7 +917,7 @@ function pinviz.startplugin()
 				for i = 0, n do
 					local a = (i / n) * 2 * math.pi
 					local qx, qy = cx + rx * math.cos(a), cy + ry * math.sin(a)
-					if px then ui:draw_line(px, py, qx, qy, c) end
+					if px then wline(px, py, qx, qy, c) end
 					px, py = qx, qy
 				end
 			end
@@ -894,7 +929,7 @@ function pinviz.startplugin()
 					local wy0 = cy + (k / rows) * ry
 					local wy1 = cy + ((k + 1) / rows) * ry
 					local hw = rx * math.sqrt(math.max(0, 1 - ((k + 0.5) / rows) ^ 2))
-					ui:draw_box(cx - hw, wy0, cx + hw, wy1, c, c)
+					wbox(cx - hw, wy0, cx + hw, wy1, c)
 				end
 			end
 
@@ -991,6 +1026,29 @@ function pinviz.startplugin()
 		}
 		s.lay = layout_reader(tbl)
 		local placed, kept, dropped = place_features(s)
+		-- PINVIZ_DUMP=1 prints the table's geometry once, so the walls and the resolved
+		-- features can be checked outside the plugin, for rubbers laid across a rail and
+		-- other corners a ball can wedge into
+		if os.getenv('PINVIZ_DUMP') == '1' then
+			for _, w in ipairs(tbl.walls or {}) do
+				print(string.format('[dump] wall %.3f %.3f %.3f %.3f', w[1], w[2], w[3], w[4]))
+			end
+			for _, kind in ipairs({ 'slings', 'targets' }) do
+				for _, f in ipairs(tbl[kind] or {}) do
+					if f[3] and f[4] then
+						print(string.format('[dump] %s %.3f %.3f %.3f %.3f %s', kind, f[1], f[2], f[3], f[4], f.name or '?'))
+					end
+				end
+			end
+			for _, kind in ipairs({ 'bumpers', 'sensors', 'saucers' }) do
+				for _, f in ipairs(tbl[kind] or {}) do
+					print(string.format('[dump] %s %.3f %.3f %.3f %s', kind, f[1], f[2], f[3] or 0, f.name or '?'))
+				end
+			end
+			for _, f in ipairs(s.flippers) do
+				print(string.format('[dump] flipper %.3f %.3f %.3f %.3f', f.pivot[1], f.pivot[2], f.length, f.rest))
+			end
+		end
 		emu.print_info(string.format('pinviz: %d features placed from the layout, %d from the table, %d without a position', placed, kept, dropped))
 		local input = manager.machine.input
 		for i, f in ipairs(tbl.flippers) do

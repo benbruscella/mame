@@ -29,6 +29,9 @@ Environment variables:
   reports how many were hit, how many passed through, and the speed and angle
   the shots left at. A ball that went back up the table was hit, even if it has
   come down again by the end of the trial.
+- `PINVIZ_DUMP=1` prints the table's walls and its resolved features once at
+  startup, so the geometry can be checked outside the plugin: a rubber laid
+  across a rail, or anything reaching past the layout's playfield panel.
 - `PINVIZ_FLIPSPREAD=0` makes that test drop every ball at one point on the bat
   instead of five. A run is then repeatable and any spread in the exit speeds is
   the physics rather than the contact point.

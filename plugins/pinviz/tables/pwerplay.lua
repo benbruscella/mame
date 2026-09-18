@@ -28,9 +28,9 @@ t.outhole_switch = { ':X0', 0x80 }
 t.flipper_enable = 'solenoid18'
 
 t.bumpers = {
-	{ name = 'Left Thumper Bumper', switch = { ':X4', 0x80 }, r = 1.15, kick = 65 },   -- left, Sol 9
-	{ name = 'Right Thumper Bumper', switch = { ':X4', 0x40 }, r = 1.15, kick = 65 },   -- right, Sol 10
-	{ name = 'Bottom Thumper Bumper', switch = { ':X4', 0x20 }, r = 1.15, kick = 65 },   -- bottom, Sol 11
+	{ name = 'Left Thumper Bumper', switch = { ':X4', 0x80 }, r = 1.65, kick = 65 },   -- left, Sol 9
+	{ name = 'Right Thumper Bumper', switch = { ':X4', 0x40 }, r = 1.65, kick = 65 },   -- right, Sol 10
+	{ name = 'Bottom Thumper Bumper', switch = { ':X4', 0x20 }, r = 1.65, kick = 65 },   -- bottom, Sol 11
 }
 
 t.slings = {
