@@ -19,6 +19,7 @@
 #include "machine/6821pia.h"
 #include "machine/timer.h"
 #include "sound/ay8910.h"
+#include "sound/bbd.h"
 #include "sound/dac.h"
 #include "sound/discrete.h"
 #include "sound/flt_rc.h"
@@ -357,7 +358,8 @@ public:
 			device_t *owner,
 			uint32_t clock = 0);
 
-	// delay of one pass through the BBD, in milliseconds
+	// delay of one pass through the BBD, in milliseconds. The Delay pot trims the
+	// CD4046's frequency, so this sets the clock the buckets are shifted at.
 	bally_say_it_again_device &set_delay_ms(float ms);
 	// feedback of the delayed signal into the input, 0 to just under 1
 	bally_say_it_again_device &set_regen(float regen);
@@ -368,18 +370,20 @@ protected:
 	// device-level overrides
 	virtual void device_start() override ATTR_COLD;
 	virtual void device_reset() override ATTR_COLD;
+	virtual void device_add_mconfig(machine_config &config) override ATTR_COLD;
 
 	// sound stream update overrides
 	virtual void sound_stream_update(sound_stream &stream) override;
 
 private:
-	static constexpr uint32_t BUFFER_SIZE = 1 << 16;    // over a second at 48 kHz, delay never exceeds that
+	// the delay line itself, 2048 buckets
+	required_device<sad4096_device> m_bbd;
 
 	sound_stream *m_stream;
-	std::vector<sound_stream::sample_t> m_buffer;
-	uint32_t m_pos;
+	float m_bbd_clock;                      // what the CD4046 is running the buckets at
+	float m_accum;                          // buckets owed at the stream's rate
+	sound_stream::sample_t m_delayed;       // what last fell out of the line
 	sound_stream::sample_t m_lowpass;
-	float m_delay_ms;
 	float m_regen;
 	float m_wet;
 };
