@@ -31,7 +31,7 @@ local more = {
 	{ LANE + 0.1, 5.0, LANE - 2.6, 7.0 },                       -- lane exit deflector
 	-- outlane dividers and inlane rails
 	{ 2.6, 25.0, 2.6, 31.5 }, { mirror(2.6), 25.0, mirror(2.6), 31.5 },
-	{ 2.6, 31.5, CX - 3.4, 34.6 }, { mirror(2.6), 31.5, mirror(CX - 3.4), 34.6 },
+	{ 2.6, 31.5, CX - 3.95, 34.3 }, { mirror(2.6), 31.5, mirror(CX - 3.95), 34.3 },
 	-- sling undersides
 	{ 3.6, 31.0, 5.4, 31.0 }, { mirror(3.6), 31.0, mirror(5.4), 31.0 },
 	-- apron edges that funnel a drained ball towards the outhole

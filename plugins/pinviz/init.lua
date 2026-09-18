@@ -657,7 +657,39 @@ function pinviz.startplugin()
 		end
 	end
 
+	-- Before it can play a game the autopilot has to start one. Coin and start are
+	-- ordinary matrix switches, found by their input type rather than by tag, since
+	-- every driver puts them somewhere different: 17 to 19 are the coin chutes and 7
+	-- or 42 the start button. It keeps coining and starting while no ball has come.
+	local function find_credit_switches(s)
+		if s.credit_looked then return end
+		s.credit_looked = true
+		for tag, port in pairs(manager.machine.ioport.ports) do
+			for _, fld in pairs(port.fields) do
+				local ty = fld.type
+				if not s.coin_sw and (ty == 17 or ty == 18 or ty == 19) then s.coin_sw = { tag, fld.mask } end
+				if not s.start_sw and (ty == 7 or ty == 42) then s.start_sw = { tag, fld.mask } end
+			end
+		end
+	end
+
+	local function update_credit(s)
+		find_credit_switches(s)
+		if s.state ~= 'trough' or s.ball then s.credit_frames = 0; return end
+		s.credit_frames = (s.credit_frames or 0) + 1
+		-- give the machine a few seconds to finish its power up test first
+		if s.credit_frames < 5 * 60 then return end
+		local step = math.floor((s.credit_frames - 5 * 60) / 45) % 4
+		if (s.credit_frames - 5 * 60) % 45 ~= 0 then return end
+		if step < 3 then
+			if s.coin_sw then pulse_switch(s, s.coin_sw, 'Coin') end
+		elseif s.start_sw then
+			pulse_switch(s, s.start_sw, 'Start')
+		end
+	end
+
 	local function update_autopilot(s)
+		update_credit(s)
 		local b = s.ball
 		if not b or s.state ~= 'play' then return end
 		local cx = s.tbl.width / 2
@@ -760,8 +792,11 @@ function pinviz.startplugin()
 				s.stuck_frames = (s.stuck_frames or 0) + 1
 				if s.stuck_frames > 90 then
 					log(s, string.format('ball stuck at (%.1f, %.1f), nudged', b.x, b.y))
+					-- downhill, and towards the middle of the table rather than further
+					-- into the corner it is wedged in: a ball balanced on the end of an
+					-- apron rail came straight back otherwise
 					b.vy = b.vy + 18
-					b.vx = b.vx + (b.x < tbl.width / 2 and -9 or 9)
+					b.vx = b.vx + (b.x < tbl.width / 2 and 9 or -9)
 					s.stuck_frames = 0
 				end
 			else

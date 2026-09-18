@@ -46,8 +46,12 @@ function M.build(opts)
 		{ 3.9, 29.5, 3.9, 31.4 }, { mirror(3.9), 29.5, mirror(3.9), 31.4 },
 		{ 3.9, 35.4, 5.6, 35.4 }, { mirror(3.9), 35.4, mirror(5.6), 35.4 },
 		-- inlane rails onto the flippers; a ball in the inlane reaches the flipper
-		-- while a ball in the outlane drops past it
-		{ 1.9, 36.0, CX - fgap, fy }, { mirror(1.9), 36.0, mirror(CX - fgap), fy },
+		-- while a ball in the outlane drops past it. The rail stops just short of the
+		-- pivot and a little above it: run all the way in and the rail's end and the
+		-- bat form an acute corner at the pivot, and a ball that rolls into it is held
+		-- there by both.
+		{ 1.9, 36.0, CX - fgap - 0.55, fy - 0.30 },
+		{ mirror(1.9), 36.0, mirror(CX - fgap - 0.55), fy - 0.30 },
 		-- deflector at the top of the shooter lane, which turns a plunged ball into
 		-- the playfield instead of letting it ride the top wall to the far side
 		{ LANE + 0.1, 5.4, LANE - 2.6, 7.4 },

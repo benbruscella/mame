@@ -51,7 +51,7 @@ local more = {
 	{ 4.3, 31.2, 5.4, 31.2 }, { mirror(4.3), 31.2, mirror(5.4), 31.2 },
 	-- inlane rails from the bottom of the outlane dividers onto the flippers; a ball
 	-- in the inlane is fed to the flipper, a ball in the outlane drops past it
-	{ 2.4, 32.4, 5.8, 33.6 }, { mirror(2.4), 32.4, mirror(5.8), 33.6 },
+	{ 2.4, 32.4, 5.25, 33.3 }, { mirror(2.4), 32.4, mirror(5.25), 33.3 },
 	-- apron edges below the outlanes
 	{ 0, 34.0, 4.6, 37.6 }, { LANE, 34.0, mirror(4.6), 37.6 },
 }

@@ -605,12 +605,12 @@ Any state="9" items are not displayed and are only used for object alignment
 
 
 			<!-- Slingshot Left -->
-			<element name="solenoid11" ref="Solenoid_SlingShot_Left">          <bounds x="035" y="320" width="69" height="80" /></element>
+			<element name="solenoid11" ref="Solenoid_SlingShot_Left" id="pinviz:X4:0x10">          <bounds x="035" y="320" width="69" height="80" /></element>
 			<element ref="Switch_Leaf_Vertical" inputtag="X4" inputmask="0x10"><bounds x="060" y="384" width="08" height="09" /></element>
 			<element ref="Key_V">                                              <bounds x="060" y="375" width="09" height="09" /></element>
 
 			<!-- Slingshot Right -->
-			<element name="solenoid13" ref="Solenoid_SlingShot_Right">         <bounds x="221" y="320" width="69" height="80" /></element>
+			<element name="solenoid13" ref="Solenoid_SlingShot_Right" id="pinviz:X4:0x08">         <bounds x="221" y="320" width="69" height="80" /></element>
 			<element ref="Switch_Leaf_Vertical" inputtag="X4" inputmask="0x08"><bounds x="257" y="384" width="08" height="09" /></element>
 			<element ref="Key_B">                                              <bounds x="257" y="375" width="09" height="09" /></element>
 
