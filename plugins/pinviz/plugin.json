@@ -1,0 +1,10 @@
+{
+	"plugin": {
+		"name": "pinviz",
+		"description": "Plays a pinball machine's ROM on a simulated 3D playfield",
+		"version": "0.1.0",
+		"author": "Ben Bruscella",
+		"type": "plugin",
+		"start": "false"
+	}
+}
