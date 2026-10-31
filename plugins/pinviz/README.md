@@ -1,0 +1,52 @@
+# pinviz
+
+Plays a pinball machine's ROM on a simulated playfield, for testing pinball drivers.
+
+MAME emulates everything in a pinball machine except the ball: the ROM, switch
+matrix, solenoids, lamps, displays and sound. This plugin adds the ball, and enough of
+a table to roll it on: walls, flippers, slingshots, pop bumpers, drop and stand-up
+targets, saucers, lanes, one-way gates and the outhole. It closes switches when the
+ball reaches them, and watches the solenoids to serve the ball, kick the outhole, reset
+drop targets and enable the flippers. The score, the lamps and the coils all come from
+the ROM reacting to that.
+
+    mame playboy -plugin pinviz
+
+The table is drawn as lines over the left of the window, with the ROM's lamps. Left and
+right Shift work the flippers and Space plunges. The usual MAME keys coin up and start
+the game. The ROM ignores coins for about twelve seconds after power on, during its
+self test.
+
+## Tables
+
+`tables/<system>.lua` describes a machine in inches, origin top left, y down the table
+towards the flippers. Playboy is the only one so far. It was traced by eye from a
+straight-on photograph of a bare playfield with an inch grid over it, so a rail can be a
+little off, and wire forms and hardware heights are simplified to the walls the ball
+runs against. No artwork is used.
+
+A table can take its feature positions from the machine's layout instead. Items with
+ids `pinviz:pfx` and `pinviz:pfy` mark the playfield panel, and an item with the id
+`pinviz:<port>:<mask>` marks a switch. The plugin then draws over the layout rather than
+beside it.
+
+The plugin changes no driver. Where a driver reads a switch through its own latch and
+not an input, as `by35.cpp` does for Playboy's outhole, drop targets and kickback, the
+table lists it under `latched`, and the plugin works the latch through the driver's
+saved state. `releases` names the solenoid that opens a latch if the driver does not.
+
+## Testing
+
+These environment variables turn the plugin into a driver regression test:
+
+- `PINVIZ_AUTOPILOT=1` coins up and plays by itself.
+- `PINVIZ_LOG=1` prints every switch closure and solenoid fire to the console.
+- `PINVIZ_DRAINTEST=1` leaves the flippers alone, launches at every strength and drops
+  balls from everywhere a ball can be, and reports any that stay in play and where they
+  were held. A table's `closed` polygons say where a ball cannot be.
+- `PINVIZ_FLIPTEST=<speed>` drops balls onto the left flipper at that speed in inches
+  per second, and reports how many were hit and how they left.
+- `PINVIZ_FLIPSPREAD=0` makes that test drop every ball at one point on the bat.
+- `PINVIZ_CRADLETEST=1` holds a flipper up, drops a ball onto it, and reports whether it
+  settles there and how hard it leaves when flipped.
+- `PINVIZ_DUMP=1` prints the table's walls and features once at startup.
