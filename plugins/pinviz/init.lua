@@ -59,6 +59,15 @@ function pinviz.startplugin()
 	local FLIPPER_RATE_UP = 2800     -- degrees per second, driven
 	local FLIPPER_RATE_DOWN = 1100   -- returning on the spring
 	local FRAME_DT = 1 / 60
+	-- the plunger takes this long to pull all the way back, in seconds
+	local PLUNGER_PULL = 0.9
+	-- a real bumper or slingshot never kicks the same way twice; without some spread here
+	-- every ball launched the same way plays out the same
+	local KICK_SPREAD = math.rad(5)      -- radians either way
+	local KICK_SPEED_SPREAD = 0.08       -- fraction either way
+	-- slow motion for the ball, which leaves the machine running at full speed; PgUp and
+	-- PgDn change it while playing
+	local SPEEDS = { 0.25, 0.5, 0.75, 1.0 }
 	local SWITCH_FRAMES = 5     -- how long a hit holds a matrix switch closed
 	local BALL_RESTITUTION_MIN_SPEED = 2.0
 	-- A pinball leaves the plunger at about 100 in/s and a flipper can send it faster,
@@ -322,6 +331,13 @@ function pinviz.startplugin()
 
 	-- push the ball out of a segment and reflect it. sv is the surface velocity
 	-- (moving flippers), kick an extra outward speed (slings, bumpers).
+	local function scatter(b)
+		local a = (math.random() * 2 - 1) * KICK_SPREAD
+		local k = 1 + (math.random() * 2 - 1) * KICK_SPEED_SPREAD
+		local c, s = math.cos(a), math.sin(a)
+		b.vx, b.vy = (b.vx * c - b.vy * s) * k, (b.vx * s + b.vy * c) * k
+	end
+
 	local function collide_segment(b, x0, y0, x1, y1, e, svx, svy, kick, thick)
 		local dx, dy = x1 - x0, y1 - y0
 		local len2 = dx * dx + dy * dy
@@ -346,6 +362,7 @@ function pinviz.startplugin()
 			if cur < kick then
 				b.vx = b.vx + (kick - cur) * nx
 				b.vy = b.vy + (kick - cur) * ny
+				scatter(b)
 			end
 		end
 		return true, nx, ny, t
@@ -393,6 +410,7 @@ function pinviz.startplugin()
 			if cur < kick then
 				b.vx = b.vx + (kick - cur) * nx
 				b.vy = b.vy + (kick - cur) * ny
+				scatter(b)
 			end
 		end
 		return true
@@ -424,9 +442,11 @@ function pinviz.startplugin()
 		log(s, 'ball to shooter lane (' .. why .. ')')
 	end
 
-	local function plunge(s)
+	-- power is how far back the plunger was pulled; a launch nobody pulled for, from the
+	-- autopilot or the automatic one, is anywhere from soft to full
+	local function plunge(s, power)
 		local b = s.ball
-		local spd = s.tbl.launch_speed * (0.9 + 0.2 * math.random())
+		local spd = s.tbl.launch_speed * (power or (0.6 + 0.6 * math.random()))
 		b.vx, b.vy = 0, -spd
 		s.state = 'play'
 		log(s, 'plunge')
@@ -1017,12 +1037,25 @@ function pinviz.startplugin()
 		if s.state == 'shooter' then
 			s.shooter_frames = s.shooter_frames + 1
 			local input = manager.machine.input
-			if input:code_pressed(s.plunge_code) or (autopilot and s.flippers_enabled) or (s.flippers_enabled and s.shooter_frames > 3 * 60) then
+			if input:code_pressed(s.plunge_code) then
+				-- pulled back for as long as the key is held, and let go with it
+				s.charge = math.min(1, (s.charge or 0) + FRAME_DT / PLUNGER_PULL)
+				s.shooter_frames = 0
+			elseif s.charge then
+				plunge(s, 0.55 + 0.65 * s.charge)
+				s.charge = nil
+			elseif (autopilot and s.flippers_enabled) or (s.flippers_enabled and s.shooter_frames > 3 * 60) then
 				plunge(s)
 			end
 		end
 
-		local dt = FRAME_DT / SUBSTEPS
+		local input = manager.machine.input
+		local faster, slower = input:code_pressed(s.faster_code), input:code_pressed(s.slower_code)
+		if faster and not s.faster_held then s.speed = math.min(#SPEEDS, s.speed + 1) end
+		if slower and not s.slower_held then s.speed = math.max(1, s.speed - 1) end
+		s.faster_held, s.slower_held = faster, slower
+
+		local dt = FRAME_DT * SPEEDS[s.speed] / SUBSTEPS
 		for i = 1, SUBSTEPS do step(s, dt) end
 
 		if console_log then
@@ -1252,6 +1285,7 @@ function pinviz.startplugin()
 				ui:draw_text(tx, ay, fit(tbl.name), C_TITLE)
 				ui:draw_text(tx, ay + lh, fit('ball ' .. s.state), C_TEXT)
 				ui:draw_text(tx, ay + 2 * lh, fit('flippers ' .. (s.flippers_enabled and 'on' or 'off')), C_TEXT)
+				if SPEEDS[s.speed] < 1 then ui:draw_text(tx, ay + 3 * lh, fit(string.format('speed %d%%', SPEEDS[s.speed] * 100)), C_TITLE) end
 				local y = ay + 4 * lh
 				for i = 1, math.min(#s.events, 14) do
 					-- leave off the time, which is the least use in a narrow column
@@ -1259,8 +1293,14 @@ function pinviz.startplugin()
 					ui:draw_text(tx, y, fit(e), i == 1 and C_TEXT or C_TEXT_DIM)
 					y = y + lh
 				end
-				ui:draw_text(tx, by - 2 * lh, fit('Shift flip'), C_TEXT_DIM)
-				ui:draw_text(tx, by - lh, fit('Space plunge'), C_TEXT_DIM)
+				if s.charge then
+					local bx0, by1 = tx, by - 5 * lh
+					ui:draw_box(bx0, by1 - lh, bx0 + (0.495 - tx) * s.charge, by1, C_FLIP, C_FLIP)
+				end
+				ui:draw_text(tx, by - 4 * lh, fit('Shift flip'), C_TEXT_DIM)
+				ui:draw_text(tx, by - 3 * lh, fit('Space plunge'), C_TEXT_DIM)
+				ui:draw_text(tx, by - 2 * lh, fit('PgUp faster'), C_TEXT_DIM)
+				ui:draw_text(tx, by - lh, fit('PgDn slower'), C_TEXT_DIM)
 			end
 		end
 	end
@@ -1277,7 +1317,9 @@ function pinviz.startplugin()
 			emu.print_info('pinviz: no table for ' .. sysname)
 			return
 		end
-		math.randomseed(1)
+		-- a test has to come out the same every run, and a game must not
+		local testing = autopilot or fliptest > 0 or cradletest or draintest
+		math.randomseed(testing and 1 or os.time())
 		latch_set, latch_item = nil, nil
 		if tbl.latched then
 			for name, index in pairs(manager.machine.devices[':'].items) do
@@ -1327,6 +1369,13 @@ function pinviz.startplugin()
 			s.auto_flip[i] = 0
 		end
 		s.plunge_code = input:code_from_token('KEYCODE_SPACE')
+		s.faster_code = input:code_from_token('KEYCODE_PGUP')
+		s.slower_code = input:code_from_token('KEYCODE_PGDN')
+		s.speed = #SPEEDS
+		local wanted = tonumber(os.getenv('PINVIZ_SPEED'))
+		if wanted then
+			for i, v in ipairs(SPEEDS) do if v <= wanted + 1e-6 then s.speed = i end end
+		end
 		for _, name in ipairs(tbl.serve_solenoids or {}) do watch_output(s, name) end
 		watch_output(s, tbl.outhole_solenoid)
 		if tbl.flipper_enable then watch_output(s, tbl.flipper_enable) end

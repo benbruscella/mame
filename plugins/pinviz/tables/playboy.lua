@@ -10,7 +10,9 @@
 --
 -- Three pop bumpers, a five target drop bank on a diagonal to the right, five
 -- stand-up targets down the left, four top lanes, a centre target, and the kickback
--- grotto at the bottom of the far left lane.
+-- grotto at the bottom of the far left lane. The lane runs on up past the grotto's
+-- plants and round the top of the arch, so the kickback sends a ball back to the top
+-- lanes, and a ball that drops off the left of the top lanes comes down it.
 
 local W, L = 20.25, 42.0
 local LANE = 18.0             -- left edge of the shooter lane
@@ -33,16 +35,18 @@ local more = {
 	-- the left side of the table, and the shooter lane's wall
 	{ 0.45, 8.6, 0.45, 33.0 }, { LANE, 9.4, LANE, 33.0 },
 	-- top lanes, four between five guides; the outer two guides close off the corners
-	{ 4.8, 3.0, 4.8, 7.2 }, { 7.0, 3.6, 7.0, 7.05 }, { 9.1, 3.6, 9.1, 7.05 }, { 11.2, 3.6, 11.2, 7.05 },
-	-- under the top left corner, turning a ball into the grotto lane
-	{ 4.8, 7.2, 2.0, 7.4 }, { 2.0, 7.4, 0.45, 8.6 },
+	{ 4.8, 4.9, 4.8, 7.2 }, { 7.0, 3.6, 7.0, 7.05 }, { 9.1, 3.6, 9.1, 7.05 }, { 11.2, 3.6, 11.2, 7.05 },
+	-- the island under the grotto's plants. The channel between it and the rail carries
+	-- the grotto lane up to the top lanes, the leftmost top lane guide is its right edge,
+	-- and the leftmost lane's ball falls off its foot into the playfield
+	{ 2.05, 9.4, 2.8, 6.7 }, { 2.8, 6.7, 3.9, 5.5 }, { 3.9, 5.5, 4.8, 4.9 }, { 4.8, 7.2, 2.05, 9.4 },
 	-- the island under the top right plastic, whose outer edge is the shooter lane's guide
 	{ 14.7, 3.85, 16.0, 4.9 }, { 16.0, 4.9, 17.2, 7.0 }, { 17.2, 7.0, LANE, 9.4 },
 	{ LANE, 9.4, 16.5, 7.45 }, { 16.5, 7.45, 13.0, 7.35 }, { 13.0, 7.35, 13.0, 5.1 }, { 13.0, 5.1, 14.7, 3.85 },
-	-- the grotto lane: its right wall, sloping up to the post so that a ball cannot wedge
-	-- between the two, then the wall behind the stand-up targets, and the floor the
+	-- the grotto lane: its right wall, which meets the island so there is no gap for a
+	-- ball to wedge in, then the wall behind the stand-up targets, and the floor the
 	-- kickback sits on
-	{ 3.2, 10.4, 2.05, 11.2 }, { 2.05, 11.2, 2.05, 16.9 }, { 2.05, 16.9, 2.55, 17.1 }, { 2.55, 17.1, 1.1, 23.7 }, { 1.1, 23.7, 0.45, 24.2 },
+	{ 2.05, 9.4, 2.05, 16.9 }, { 2.05, 16.9, 2.55, 17.1 }, { 2.55, 17.1, 1.1, 23.7 }, { 1.1, 23.7, 0.45, 24.2 },
 	{ 0.45, 19.6, 2.2, 18.6 },
 	-- round the drop bank: the top, the wall behind the targets, and the right lane's
 	-- left wall
@@ -89,7 +93,7 @@ local t = {
 	gates = { { 15.0, 2.6, 14.7, 3.85 } },
 	posts = {
 		{ 7.0, 3.6, 0.25 }, { 9.1, 3.6, 0.25 }, { 11.2, 3.6, 0.25 }, { 7.0, 7.05, 0.25 }, { 9.1, 7.05, 0.25 }, { 11.2, 7.05, 0.25 },
-		{ 3.2, 10.4, 0.3 }, { 2.4, 12.8, 0.25 }, { 2.15, 15.1, 0.25 }, { 1.9, 26.0, 0.25 }, { 16.4, 26.0, 0.25 },
+		{ 4.8, 4.9, 0.25 }, { 2.4, 12.8, 0.25 }, { 2.15, 15.1, 0.25 }, { 1.9, 26.0, 0.25 }, { 16.4, 26.0, 0.25 },
 	},
 
 	serve_position = { (LANE + W - 0.25) / 2, SERVE_Y },
@@ -212,7 +216,7 @@ local t = {
 	-- targets, under the apron and outside the rail
 	closed = {
 		{ { 14.7, 3.85 }, { 16.0, 4.9 }, { 17.2, 7.0 }, { 18.0, 9.4 }, { 16.5, 7.45 }, { 13.0, 7.35 }, { 13.0, 5.1 } },
-		{ { 4.8, 3.0 }, { 4.8, 7.2 }, { 2.0, 7.4 }, { 0.45, 8.6 }, { 1.7, 6.0 }, { 3.0, 4.6 } },
+		{ { 2.05, 9.4 }, { 2.8, 6.7 }, { 3.9, 5.5 }, { 4.8, 4.9 }, { 4.8, 7.2 } },
 		{ { 13.2, 12.2 }, { 16.05, 10.3 }, { 16.05, 17.9 }, { 15.45, 18.1 }, { 13.65, 12.6 } },
 		{ { 15.45, 25.2 }, { 17.65, 20.4 }, { 18.0, 20.4 }, { 18.0, 25.2 } },
 		{ { 3.25, 28.0 }, { 3.75, 28.6 }, { 5.75, 32.65 }, { 5.85, 33.1 }, { 3.25, 31.0 } },

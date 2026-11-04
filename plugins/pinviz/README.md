@@ -13,9 +13,11 @@ the ROM reacting to that.
     mame playboy -plugin pinviz
 
 The table is drawn as lines over the left of the window, with the ROM's lamps. Left and
-right Shift work the flippers and Space plunges. The usual MAME keys coin up and start
-the game. The ROM ignores coins for about twelve seconds after power on, during its
-self test.
+right Shift work the flippers. Hold Space to pull the plunger back and let go to
+launch: the longer it is held, the harder the launch. PgUp and PgDn slow the ball down
+or speed it up again, between a quarter and full speed, without slowing the machine;
+`PINVIZ_SPEED` sets where it starts. The usual MAME keys coin up and start the game. The
+ROM ignores coins for about twelve seconds after power on, during its self test.
 
 ## Tables
 
