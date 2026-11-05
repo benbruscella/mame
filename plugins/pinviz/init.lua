@@ -9,7 +9,7 @@
 -- simulator: one ball, walls, flippers, slingshots, pop bumpers, targets and
 -- lanes, drawn as lines over the left part of the window.
 --
--- A table definition (plugins/pinviz/tables/<system>.lua) says where things are
+-- A playfield definition (plugins/pinviz/playfields/<system>.lua) says where things are
 -- and which input port field each one closes. Solenoid outputs from the driver
 -- drive the ball the other way: serving, the outhole kick, drop target resets
 -- and the flipper enable relay.
@@ -31,7 +31,7 @@ local frame_subscription, start_subscription, stop_subscription
 
 function pinviz.startplugin()
 
-	local sim = nil            -- simulation state, nil when the running machine has no table
+	local sim = nil            -- simulation state, nil when the running machine has no playfield
 	local autopilot = os.getenv('PINVIZ_AUTOPILOT') == '1'
 	local fliptest = tonumber(os.getenv('PINVIZ_FLIPTEST') or '0')   -- ball speed for the flipper test, 0 = off
 	local console_log = os.getenv('PINVIZ_LOG') == '1'
@@ -66,8 +66,8 @@ function pinviz.startplugin()
 	local KICK_SPREAD = math.rad(5)      -- radians either way
 	local KICK_SPEED_SPREAD = 0.08       -- fraction either way
 	-- slow motion for the ball, which leaves the machine running at full speed; PgUp and
-	-- PgDn change it while playing
-	local SPEEDS = { 0.25, 0.5, 0.75, 1.0 }
+	-- PgDn change it while playing, a tenth at a time
+	local SPEEDS = { 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 }
 	local SWITCH_FRAMES = 5     -- how long a hit holds a matrix switch closed
 	local BALL_RESTITUTION_MIN_SPEED = 2.0
 	-- A pinball leaves the plunger at about 100 in/s and a flipper can send it faster,
@@ -80,7 +80,7 @@ function pinviz.startplugin()
 	-- --------------------------------------------------------------------
 
 	local function load_table(name)
-		local ok, tbl = pcall(require, 'pinviz/tables/' .. name)
+		local ok, tbl = pcall(require, 'pinviz/playfields/' .. name)
 		if ok and type(tbl) == 'table' then
 			return tbl
 		end
@@ -416,6 +416,23 @@ function pinviz.startplugin()
 		return true
 	end
 
+	-- whether the ball is resting on a flipper the player is holding up: a cradle, which
+	-- is a shot being set up and must not be nudged as if the ball were stuck
+	local function cradled(s)
+		local b = s.ball
+		if not b then return false end
+		for _, f in ipairs(s.flippers) do
+			if f.target == f.up then
+				local a = math.rad(f.angle)
+				local dx, dy = f.length * math.cos(a), f.length * math.sin(a)
+				local t = math.max(0, math.min(1, ((b.x - f.pivot[1]) * dx + (b.y - f.pivot[2]) * dy) / (dx * dx + dy * dy)))
+				local d = math.sqrt((b.x - f.pivot[1] - t * dx) ^ 2 + (b.y - f.pivot[2] - t * dy) ^ 2)
+				if d < b.r + FLIPPER_THICKNESS + 0.15 then return true end
+			end
+		end
+		return false
+	end
+
 	local function flipper_ends(f)
 		local a = math.rad(f.angle)
 		return f.pivot[1], f.pivot[2], f.pivot[1] + f.length * math.cos(a), f.pivot[2] + f.length * math.sin(a)
@@ -645,7 +662,7 @@ function pinviz.startplugin()
 		local speed2 = b.vx * b.vx + b.vy * b.vy
 		if speed2 < 0.25 then
 			s.still = (s.still or 0) + 1
-			if s.still > 3 * 60 * SUBSTEPS and not draintest then
+			if s.still > 3 * 60 * SUBSTEPS and not draintest and not cradled(s) then
 				b.vx = b.vx + (math.random() - 0.5) * 40
 				b.vy = b.vy - 20 - math.random() * 20
 				s.still = 0
@@ -1014,7 +1031,7 @@ function pinviz.startplugin()
 		-- A ball at rest in open play is caught in a corner between two surfaces, each
 		-- holding it against the other. Real machines have a player to nudge them; here
 		-- a small push downhill frees it and the drain or the flippers take over.
-		if s.state == 'play' and s.ball and not draintest then
+		if s.state == 'play' and s.ball and not draintest and not cradled(s) then
 			local b = s.ball
 			if math.sqrt(b.vx * b.vx + b.vy * b.vy) < 3.0 then
 				s.stuck_frames = (s.stuck_frames or 0) + 1
@@ -1314,7 +1331,7 @@ function pinviz.startplugin()
 		local sysname = manager.machine.system.name
 		local tbl = load_table(sysname)
 		if not tbl then
-			emu.print_info('pinviz: no table for ' .. sysname)
+			emu.print_info('pinviz: no playfield for ' .. sysname)
 			return
 		end
 		-- a test has to come out the same every run, and a game must not
@@ -1393,7 +1410,7 @@ function pinviz.startplugin()
 		for _, l in ipairs(tbl.lamps or {}) do l.proxy = output_proxy('lamp' .. l.n) end
 		s.draw = make_drawer(s)
 		sim = s
-		emu.print_info('pinviz: table ' .. tbl.name .. ' loaded' .. (autopilot and ' (autopilot)' or ''))
+		emu.print_info('pinviz: playfield ' .. tbl.name .. ' loaded' .. (autopilot and ' (autopilot)' or ''))
 	end
 
 	local function stop()

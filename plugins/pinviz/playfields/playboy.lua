@@ -1,7 +1,7 @@
 -- license:BSD-3-Clause
 -- copyright-holders:Ben Bruscella
 --
--- pinviz table definition for Bally Playboy (1978).
+-- pinviz playfield definition for Bally Playboy (1978).
 --
 -- Positions were read off a straight-on photograph of a bare Playboy playfield with
 -- a one inch grid overlaid: the rails, the five lanes down the sides, the slots the
@@ -10,9 +10,10 @@
 --
 -- Three pop bumpers, a five target drop bank on a diagonal to the right, five
 -- stand-up targets down the left, four top lanes, a centre target, and the kickback
--- grotto at the bottom of the far left lane. The lane runs on up past the grotto's
--- plants and round the top of the arch, so the kickback sends a ball back to the top
--- lanes, and a ball that drops off the left of the top lanes comes down it.
+-- grotto at the bottom of the far left lane. Above the lane, the grotto is a passage
+-- with a one way gate at each end: a ball shot up the left goes in through the lower
+-- gate and on out through the upper one onto the top lanes, and one that falls back
+-- drops down the lane to the kickback, which sends it round the same way.
 
 local W, L = 20.25, 42.0
 local LANE = 18.0             -- left edge of the shooter lane
@@ -36,10 +37,11 @@ local more = {
 	{ 0.45, 8.6, 0.45, 33.0 }, { LANE, 9.4, LANE, 33.0 },
 	-- top lanes, four between five guides; the outer two guides close off the corners
 	{ 4.8, 4.9, 4.8, 7.2 }, { 7.0, 3.6, 7.0, 7.05 }, { 9.1, 3.6, 9.1, 7.05 }, { 11.2, 3.6, 11.2, 7.05 },
-	-- the island under the grotto's plants. The channel between it and the rail carries
-	-- the grotto lane up to the top lanes, the leftmost top lane guide is its right edge,
-	-- and the leftmost lane's ball falls off its foot into the playfield
-	{ 2.05, 9.4, 2.8, 6.7 }, { 2.8, 6.7, 3.9, 5.5 }, { 3.9, 5.5, 4.8, 4.9 }, { 4.8, 7.2, 2.05, 9.4 },
+	-- the grotto: the leftmost top lane guide and the wall below it are the passage's right
+	-- side, and the lower gate fills the rest, down to the top of the grotto lane
+	{ 4.8, 7.2, 3.4, 8.3 },
+	-- the plastic between the grotto lane and the star rollover
+	{ 2.05, 9.4, 4.0, 9.4 }, { 4.0, 9.4, 4.0, 12.6 }, { 4.0, 12.6, 2.05, 12.6 },
 	-- the island under the top right plastic, whose outer edge is the shooter lane's guide
 	{ 14.7, 3.85, 16.0, 4.9 }, { 16.0, 4.9, 17.2, 7.0 }, { 17.2, 7.0, LANE, 9.4 },
 	{ LANE, 9.4, 16.5, 7.45 }, { 16.5, 7.45, 13.0, 7.35 }, { 13.0, 7.35, 13.0, 5.1 }, { 13.0, 5.1, 14.7, 3.85 },
@@ -87,13 +89,15 @@ local t = {
 	wall_restitution = 0.45,
 
 	walls = walls,
-	-- one way gate where the arch meets the playfield. It has to be here and not at the
-	-- top of the shooter lane: a launch too weak to clear the arch rolls back to the
-	-- plunger, and a gate lower down would catch it with nowhere to go.
-	gates = { { 15.0, 2.6, 14.7, 3.85 } },
+	-- One way gates, each passable from one side only. Where the arch meets the playfield,
+	-- rather than at the top of the shooter lane: a launch too weak to clear the arch rolls
+	-- back to the plunger, and a gate lower down would catch it with nowhere to go. Then
+	-- the grotto's two: the lower lets a ball from the playfield into the passage, and the
+	-- upper lets it out onto the top lanes, but neither lets one back the other way.
+	gates = { { 15.0, 2.6, 14.7, 3.85 }, { 3.4, 8.3, 2.05, 9.4 }, { 4.8, 4.9, 4.75, 3.05 } },
 	posts = {
 		{ 7.0, 3.6, 0.25 }, { 9.1, 3.6, 0.25 }, { 11.2, 3.6, 0.25 }, { 7.0, 7.05, 0.25 }, { 9.1, 7.05, 0.25 }, { 11.2, 7.05, 0.25 },
-		{ 4.8, 4.9, 0.25 }, { 2.4, 12.8, 0.25 }, { 2.15, 15.1, 0.25 }, { 1.9, 26.0, 0.25 }, { 16.4, 26.0, 0.25 },
+		{ 4.8, 4.9, 0.25 }, { 4.35, 14.45, 0.3 }, { 2.4, 12.8, 0.25 }, { 2.15, 15.1, 0.25 }, { 1.9, 26.0, 0.25 }, { 16.4, 26.0, 0.25 },
 	},
 
 	serve_position = { (LANE + W - 0.25) / 2, SERVE_Y },
@@ -216,7 +220,7 @@ local t = {
 	-- targets, under the apron and outside the rail
 	closed = {
 		{ { 14.7, 3.85 }, { 16.0, 4.9 }, { 17.2, 7.0 }, { 18.0, 9.4 }, { 16.5, 7.45 }, { 13.0, 7.35 }, { 13.0, 5.1 } },
-		{ { 2.05, 9.4 }, { 2.8, 6.7 }, { 3.9, 5.5 }, { 4.8, 4.9 }, { 4.8, 7.2 } },
+		{ { 2.05, 9.4 }, { 4.0, 9.4 }, { 4.0, 12.6 }, { 2.05, 12.6 } },
 		{ { 13.2, 12.2 }, { 16.05, 10.3 }, { 16.05, 17.9 }, { 15.45, 18.1 }, { 13.65, 12.6 } },
 		{ { 15.45, 25.2 }, { 17.65, 20.4 }, { 18.0, 20.4 }, { 18.0, 25.2 } },
 		{ { 3.25, 28.0 }, { 3.75, 28.6 }, { 5.75, 32.65 }, { 5.85, 33.1 }, { 3.25, 31.0 } },
