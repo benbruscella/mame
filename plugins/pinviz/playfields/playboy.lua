@@ -65,8 +65,9 @@ local more = {
 	-- ball rolls straight from one onto the other. A guide that stops short of the pivot
 	-- leaves a dimple between its end and the back of the bat that holds a ball for good.
 	{ 1.9, 31.5, 6.07, 34.76 }, { 16.4, 31.5, 12.28, 34.76 },
-	-- the apron, funnelling the outlanes and the gap between the flippers to the outhole
-	{ 0.45, 33.0, 8.0, 39.4 }, { LANE, 33.0, 10.3, 39.4 }, { 8.0, 39.4, 10.3, 39.4 },
+	-- the apron, funnelling the outlanes and the gap between the flippers to the hole that
+	-- leads down to the outhole
+	{ 0.45, 33.0, 8.0, 39.4 }, { LANE, 33.0, 10.3, 39.4 },
 }
 for _, s in ipairs(more) do walls[#walls + 1] = s end
 
@@ -109,6 +110,8 @@ local t = {
 	flipper_enable = 'solenoid18',
 	drain_y = 38.4,
 	drain_x = { 0, LANE },
+	-- the hole at the foot of the apron, and the outhole under it
+	outhole = { x = 9.15, y = 41.0, top = 39.4 },
 
 	flippers = {
 		-- three inch bats leave nearly two inches between the tips. The ball needs 1.5 to

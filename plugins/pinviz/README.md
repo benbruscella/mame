@@ -27,6 +27,9 @@ straight-on photograph of a bare playfield with an inch grid over it, so a rail 
 little off, and wire forms and hardware heights are simplified to the walls the ball
 runs against. No artwork is used.
 
+A drained ball rolls on through the hole at the foot of the apron and drops into the
+outhole, closing its switch as it lands; a playfield's `outhole` says where the hole is.
+
 A playfield can take its feature positions from the machine's layout instead. Items with
 ids `pinviz:pfx` and `pinviz:pfy` mark the playfield panel, and an item with the id
 `pinviz:<port>:<mask>` marks a switch. The plugin then draws over the layout rather than

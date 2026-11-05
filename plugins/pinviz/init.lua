@@ -65,6 +65,8 @@ function pinviz.startplugin()
 	-- every ball launched the same way plays out the same
 	local KICK_SPREAD = math.rad(5)      -- radians either way
 	local KICK_SPEED_SPREAD = 0.08       -- fraction either way
+	-- how fast a drained ball sinks down through the hole to the outhole, inches a second
+	local SINK_SPEED = 5
 	-- slow motion for the ball, which leaves the machine running at full speed; PgUp and
 	-- PgDn change it while playing, a tenth at a time
 	local SPEEDS = { 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 }
@@ -473,9 +475,39 @@ function pinviz.startplugin()
 	-- one physics step
 	-- --------------------------------------------------------------------
 
+	-- where a drained ball goes: the hole between the apron's rails, and the outhole
+	-- under it. A playfield names them; otherwise the hole is the middle of the drain.
+	local function outhole_of(tbl)
+		local h = tbl.outhole or {}
+		local x = h.x or (tbl.drain_x and (tbl.drain_x[1] + tbl.drain_x[2]) / 2 or tbl.width / 2)
+		return x, h.y or (tbl.drain_y + 2.0), h.top or (tbl.drain_y + 1.0)
+	end
+
 	local function step(s, dt)
 		local tbl, b = s.tbl, s.ball
-		if not b or s.state ~= 'play' then return end
+		if not b or (s.state ~= 'play' and s.state ~= 'draining') then return end
+
+		-- a drained ball rolls on down between the apron's rails and through the hole, drawn
+		-- in towards the middle of it, and closes the outhole switch when it lands
+		if s.state == 'draining' then
+			local hx, hy, top = outhole_of(tbl)
+			if b.y > top then
+				-- through the hole it drops in and eases to a gentle sink, slow enough to watch
+				-- go down: however fast it came, the edge of the hole takes most of that
+				local ease = math.min(1, 10 * dt)
+				b.vy = math.min(b.vy, 2 * SINK_SPEED)
+				b.vx = b.vx + ((hx - b.x) * 3 - b.vx) * ease
+				b.vy = b.vy + (SINK_SPEED - b.vy) * ease
+			end
+			if b.y >= hy then
+				b.x, b.y, b.vx, b.vy = hx, hy, 0, 0
+				s.state = 'outhole'
+				s.landed = 12
+				hold_switch(s, tbl.outhole_switch, true)
+				log(s, 'drain, ball in outhole')
+				return
+			end
+		end
 
 		-- gravity down the incline, rolling friction
 		local px, py = b.x, b.y   -- where the ball was at the start of this substep
@@ -680,14 +712,11 @@ function pinviz.startplugin()
 			return
 		end
 
-		local in_drain_zone = b.y > tbl.drain_y
+		local in_drain_zone = s.state == 'play' and b.y > tbl.drain_y
 		if tbl.drain_x then in_drain_zone = in_drain_zone and b.x >= tbl.drain_x[1] and b.x <= tbl.drain_x[2] end
 		if in_drain_zone then
-			s.state = 'outhole'
-			b.vx, b.vy = 0, 0
-			b.y = tbl.drain_y
-			hold_switch(s, tbl.outhole_switch, true)
-			log(s, 'drain, ball in outhole')
+			s.state = 'draining'
+			log(s, 'drain')
 		end
 	end
 
@@ -1273,10 +1302,23 @@ function pinviz.startplugin()
 				disc(x0, y0, 0.32, c, 4)
 			end
 
-			if s.ball then
+			-- the outhole, under the apron: lit for a moment when a ball lands in it, and
+			-- dimly while one waits there for the kicker
+			local hx, hy, top = outhole_of(tbl)
+			if s.state == 'outhole' then
+				local glow = (s.landed or 0) > 0
+				disc(hx, hy, 0.62, glow and C_FLASH or C_DOWN, 8)
+				if glow then s.landed = s.landed - 1 end
+			end
+			circle(hx, hy, 0.62, C_GATE, 16)
+
+			if s.ball and s.state ~= 'outhole' then
 				local b = s.ball
-				disc(b.x, b.y, b.r, C_BALL, 8)
-				circle(b.x, b.y, b.r, C_BALL_RIM, 12)
+				-- dropping through the hole it shrinks and dims, going down under the apron
+				local k = s.state == 'draining' and math.max(0, math.min(1, (b.y - top) / (hy - top))) or 0
+				local r = b.r * (1 - 0.6 * k)
+				disc(b.x, b.y, r, k > 0 and C_BALL_RIM or C_BALL, 8)
+				circle(b.x, b.y, r, C_BALL_RIM, 12)
 			end
 
 			local lh = 0.03
