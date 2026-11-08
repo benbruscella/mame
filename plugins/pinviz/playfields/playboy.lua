@@ -40,8 +40,6 @@ local more = {
 	-- the grotto: the leftmost top lane guide and the wall below it are the passage's right
 	-- side, and the lower gate fills the rest, down to the top of the grotto lane
 	{ 4.8, 7.2, 3.4, 8.3 },
-	-- the plastic between the grotto lane and the star rollover
-	{ 2.05, 9.4, 4.0, 9.4 }, { 4.0, 9.4, 4.0, 12.6 }, { 4.0, 12.6, 2.05, 12.6 },
 	-- the island under the top right plastic, whose outer edge is the shooter lane's guide
 	{ 14.7, 3.85, 16.0, 4.9 }, { 16.0, 4.9, 17.2, 7.0 }, { 17.2, 7.0, LANE, 9.4 },
 	{ LANE, 9.4, 16.5, 7.45 }, { 16.5, 7.45, 13.0, 7.35 }, { 13.0, 7.35, 13.0, 5.1 }, { 13.0, 5.1, 14.7, 3.85 },
@@ -54,8 +52,10 @@ local more = {
 	-- left wall
 	{ 13.2, 12.2, 16.05, 10.3 }, { 13.2, 12.2, 13.65, 12.6 }, { 13.65, 12.6, 15.45, 18.1 },
 	{ 15.45, 18.1, 16.05, 17.9 }, { 15.0, 18.2, 15.45, 18.1 }, { 16.05, 10.3, 16.05, 14.6 }, { 16.05, 16.6, 16.05, 17.9 },
-	-- the island at the foot of the right lane
-	{ 17.65, 20.4, LANE, 20.4 }, { LANE, 25.2, 15.45, 25.2 },
+	-- the plastic at the foot of the right lane. Only its rubber, which runs down its long
+	-- side, and its posts stop a ball: one can pass under the plastic itself, down into the
+	-- right inlane and outlane.
+	{ 17.65, 20.4, LANE, 20.4 },
 	-- outlane and inlane dividers
 	{ 1.9, 26.0, 1.9, 31.5 }, { 16.4, 26.0, 16.4, 31.5 },
 	-- the frames of the slingshots, which also carry the inlanes onto the flippers
@@ -98,7 +98,7 @@ local t = {
 	gates = { { 15.0, 2.6, 14.7, 3.85 }, { 3.4, 8.3, 2.05, 9.4 }, { 4.8, 4.9, 4.75, 3.05 } },
 	posts = {
 		{ 7.0, 3.6, 0.25 }, { 9.1, 3.6, 0.25 }, { 11.2, 3.6, 0.25 }, { 7.0, 7.05, 0.25 }, { 9.1, 7.05, 0.25 }, { 11.2, 7.05, 0.25 },
-		{ 4.8, 4.9, 0.25 }, { 4.35, 14.45, 0.3 }, { 2.4, 12.8, 0.25 }, { 2.15, 15.1, 0.25 }, { 1.9, 26.0, 0.25 }, { 16.4, 26.0, 0.25 },
+		{ 4.8, 4.9, 0.25 }, { 4.35, 14.45, 0.3 }, { 15.45, 25.2, 0.3 }, { 17.65, 20.4, 0.25 }, { 2.4, 12.8, 0.25 }, { 2.15, 15.1, 0.25 }, { 1.9, 26.0, 0.25 }, { 16.4, 26.0, 0.25 },
 	},
 
 	serve_position = { (LANE + W - 0.25) / 2, SERVE_Y },
@@ -223,9 +223,7 @@ local t = {
 	-- targets, under the apron and outside the rail
 	closed = {
 		{ { 14.7, 3.85 }, { 16.0, 4.9 }, { 17.2, 7.0 }, { 18.0, 9.4 }, { 16.5, 7.45 }, { 13.0, 7.35 }, { 13.0, 5.1 } },
-		{ { 2.05, 9.4 }, { 4.0, 9.4 }, { 4.0, 12.6 }, { 2.05, 12.6 } },
 		{ { 13.2, 12.2 }, { 16.05, 10.3 }, { 16.05, 17.9 }, { 15.45, 18.1 }, { 13.65, 12.6 } },
-		{ { 15.45, 25.2 }, { 17.65, 20.4 }, { 18.0, 20.4 }, { 18.0, 25.2 } },
 		{ { 3.25, 28.0 }, { 3.75, 28.6 }, { 5.75, 32.65 }, { 5.85, 33.1 }, { 3.25, 31.0 } },
 		{ { 15.1, 28.0 }, { 14.6, 28.6 }, { 12.6, 32.65 }, { 12.5, 33.1 }, { 15.1, 31.0 } },
 		{ { 0.45, 19.6 }, { 2.2, 18.6 }, { 1.1, 23.7 }, { 0.45, 24.2 } },

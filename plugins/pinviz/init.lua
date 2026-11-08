@@ -1302,6 +1302,28 @@ function pinviz.startplugin()
 				disc(x0, y0, 0.32, c, 4)
 			end
 
+			-- the plunger, at the foot of the shooter lane: the rod draws back as Space is held,
+			-- and the gauge beside it fills with the strength of the launch to come
+			if tbl.lane then
+				local px, py = tbl.serve_position[1], tbl.serve_position[2]
+				local charge = s.state == 'shooter' and (s.charge or 0) or 0
+				local tip, foot = py + 0.65 + charge * 1.8, tbl.length - 0.5
+				thick(px, tip, px, foot, C_POST, 0.09)
+				line(px - 0.35, tip, px + 0.35, tip, C_WALL)
+				disc(px, foot, 0.4, C_BUMPER, 6)
+				if s.state == 'shooter' then
+					local gx0, gx1 = px + 0.55, px + 0.85
+					local gtop, gbottom = py + 0.8, tbl.length - 0.5
+					local ax0, ay0 = to(gx0, gtop)
+					local ax1, ay1 = to(gx1, gbottom)
+					ui:draw_box(ax0, ay0, ax1, ay1, C_EDGE, 0x00000000)
+					if charge > 0 then
+						local _, fy = to(gx0, gbottom - (gbottom - gtop) * charge)
+						ui:draw_box(ax0, fy, ax1, ay1, charge >= 1 and C_BUMPER or C_FLIP, charge >= 1 and C_BUMPER or C_FLIP)
+					end
+				end
+			end
+
 			-- the outhole, under the apron: lit for a moment when a ball lands in it, and
 			-- dimly while one waits there for the kicker
 			local hx, hy, top = outhole_of(tbl)
@@ -1351,10 +1373,6 @@ function pinviz.startplugin()
 					local e = s.events[i]:gsub('^%s*[%d.]+%s+', '')
 					ui:draw_text(tx, y, fit(e), i == 1 and C_TEXT or C_TEXT_DIM)
 					y = y + lh
-				end
-				if s.charge then
-					local bx0, by1 = tx, by - 5 * lh
-					ui:draw_box(bx0, by1 - lh, bx0 + (0.495 - tx) * s.charge, by1, C_FLIP, C_FLIP)
 				end
 				ui:draw_text(tx, by - 4 * lh, fit('Shift flip'), C_TEXT_DIM)
 				ui:draw_text(tx, by - 3 * lh, fit('Space plunge'), C_TEXT_DIM)
