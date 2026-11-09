@@ -5,8 +5,11 @@
 --
 -- Positions were read off a straight-on photograph of a bare Playboy playfield with
 -- a one inch grid overlaid: the rails, the five lanes down the sides, the slots the
--- targets stand in, the flipper bushings and every lamp insert. No artwork is used.
--- Units are inches, origin top left, y down the table towards the flippers.
+-- targets stand in, the flipper bushings and every lamp insert. Quench, who knows the
+-- machine, corrected the top lane dividers, the grotto and its gates, the drop bank,
+-- the plastic at the foot of the right lane, the outlane dividers and which rubbers
+-- score. No artwork is used.
+-- Units are inches, origin top left, y down the playfield towards the flippers.
 --
 -- Three pop bumpers, a five target drop bank on a diagonal to the right, five
 -- stand-up targets down the left, four top lanes, a centre target, and the kickback
@@ -26,38 +29,50 @@ local function along(x, y, dx, dy, length)
 	return x - hx, y - hy, x + hx, y + hy
 end
 
--- the outer rail, up the side of the shooter lane, over the top and down to the grotto
-local arch = { { 0.45, 8.6 }, { 1.7, 6.0 }, { 3.0, 4.6 }, { 5.0, 2.8 }, { 7.0, 1.75 }, { 10.0, 1.1 },
+-- the outer rail, up the side of the shooter lane, over the top and down to the grotto.
+-- Round the top left it is a smooth curve, which a ball kicked up the grotto lane rides
+-- on round to the top lanes; a corner there throws the ball across the passage instead.
+local arch = { { 0.45, 9.2 }, { 0.55, 8.4 }, { 0.8, 7.6 }, { 1.15, 6.9 }, { 1.6, 6.25 }, { 2.1, 5.65 }, { 2.6, 5.05 },
+	{ 3.0, 4.6 }, { 5.0, 2.8 }, { 7.0, 1.75 }, { 10.0, 1.1 },
 	{ 13.0, 1.55 }, { 15.0, 2.6 }, { 17.0, 4.2 }, { 18.6, 6.3 }, { 19.6, 8.8 }, { W - 0.25, 11.0 }, { W - 0.25, L - 5 } }
 local walls = {}
 for i = 1, #arch - 1 do walls[#walls + 1] = { arch[i][1], arch[i][2], arch[i + 1][1], arch[i + 1][2] } end
 
 local more = {
 	-- the left side of the table, and the shooter lane's wall
-	{ 0.45, 8.6, 0.45, 33.0 }, { LANE, 9.4, LANE, 33.0 },
-	-- top lanes, four between five guides; the outer two guides close off the corners
-	{ 4.8, 4.9, 4.8, 7.2 }, { 7.0, 3.6, 7.0, 7.05 }, { 9.1, 3.6, 9.1, 7.05 }, { 11.2, 3.6, 11.2, 7.05 },
-	-- the grotto: the leftmost top lane guide and the wall below it are the passage's right
-	-- side, and the lower gate fills the rest, down to the top of the grotto lane
-	{ 4.8, 7.2, 3.4, 8.3 },
+	{ 0.45, 9.2, 0.45, 33.0 }, { LANE, 9.4, LANE, 33.0 },
+	-- top lanes: four lanes between plastic dividers, each with a post at either end. The
+	-- leftmost divider is the edge of the triangular plastic beside the grotto passage.
+	{ 4.8, 5.0, 4.8, 7.05 }, { 5.15, 5.0, 5.15, 7.05 },
+	{ 6.72, 5.0, 6.72, 7.05 }, { 7.34, 5.0, 7.34, 7.05 },
+	{ 8.79, 5.0, 8.79, 7.05 }, { 9.42, 5.0, 9.42, 7.05 },
+	{ 10.92, 5.0, 10.92, 7.05 }, { 11.55, 5.0, 11.55, 7.05 },
+	-- the grotto: the triangular plastic is the passage's right side, between its gates
+	{ 4.75, 5.0, 3.23, 6.42 }, { 3.23, 6.42, 4.6, 7.4 },
 	-- the island under the top right plastic, whose outer edge is the shooter lane's guide
 	{ 14.7, 3.85, 16.0, 4.9 }, { 16.0, 4.9, 17.2, 7.0 }, { 17.2, 7.0, LANE, 9.4 },
 	{ LANE, 9.4, 16.5, 7.45 }, { 16.5, 7.45, 13.0, 7.35 }, { 13.0, 7.35, 13.0, 5.1 }, { 13.0, 5.1, 14.7, 3.85 },
-	-- the grotto lane: its right wall, which meets the island so there is no gap for a
-	-- ball to wedge in, then the wall behind the stand-up targets, and the floor the
-	-- kickback sits on
-	{ 2.05, 9.4, 2.05, 16.9 }, { 2.05, 16.9, 2.55, 17.1 }, { 2.55, 17.1, 1.1, 23.7 }, { 1.1, 23.7, 0.45, 24.2 },
-	{ 0.45, 19.6, 2.2, 18.6 },
-	-- round the drop bank: the top, the wall behind the targets, and the right lane's
-	-- left wall
-	{ 13.2, 12.2, 16.05, 10.3 }, { 13.2, 12.2, 13.65, 12.6 }, { 13.65, 12.6, 15.45, 18.1 },
-	{ 15.45, 18.1, 16.05, 17.9 }, { 15.0, 18.2, 15.45, 18.1 }, { 16.05, 10.3, 16.05, 14.6 }, { 16.05, 16.6, 16.05, 17.9 },
-	-- the plastic at the foot of the right lane. Only its rubber, which runs down its long
-	-- side, and its posts stop a ball: one can pass under the plastic itself, down into the
-	-- right inlane and outlane.
-	{ 17.65, 20.4, LANE, 20.4 },
-	-- outlane and inlane dividers
-	{ 1.9, 26.0, 1.9, 31.5 }, { 16.4, 26.0, 16.4, 31.5 },
+	-- the grotto lane, down to the floor the kickback sits on, and the island beside it,
+	-- whose far side curves round the star rollover to a post. The island's top slopes
+	-- into the lane, so a ball that falls back from the passage goes down to the kickback.
+	{ 2.05, 10.0, 2.05, 18.6 }, { 0.45, 19.6, 2.05, 18.65 },
+	{ 2.05, 10.0, 3.35, 9.25 }, { 3.35, 9.25, 3.35, 11.65 },
+	{ 3.35, 11.65, 2.95, 12.2 }, { 2.95, 12.2, 2.6, 12.75 }, { 2.6, 12.75, 2.35, 13.35 }, { 2.35, 13.35, 2.25, 14.05 },
+	{ 2.25, 14.05, 2.27, 14.8 }, { 2.27, 14.8, 2.42, 15.5 }, { 2.42, 15.5, 2.73, 16.6 },
+	-- the wall behind the stand-up targets, from the island's post down to the left wall
+	{ 2.73, 16.6, 2.55, 17.1 }, { 2.55, 17.1, 1.1, 23.7 }, { 1.1, 23.7, 0.45, 24.2 },
+	-- round the drop bank: the top, and the right lane's left wall. The rubber behind the
+	-- targets is a switch, so it is listed with the slingshots.
+	{ 13.2, 12.2, 14.15, 11.55 }, { 14.15, 11.55, 14.15, 9.7 }, { 14.15, 9.7, 16.05, 11.0 },
+	{ 13.2, 12.2, 13.65, 12.6 }, { 15.45, 18.1, 16.05, 17.9 }, { 15.0, 18.2, 15.45, 18.1 }, { 16.05, 11.0, 16.05, 17.9 },
+	-- the plastic at the foot of the right lane: a guide curving down off the lane wall to
+	-- a post, a rubber with no switch behind it down to another, and the plastic's foot,
+	-- high enough that a ball can roll in under it to the right inlane and outlane
+	{ LANE, 18.1, 17.95, 18.8 }, { 17.95, 18.8, 17.82, 19.5 }, { 17.82, 19.5, 17.5, 20.2 },
+	{ 17.5, 20.2, 17.2, 20.9 }, { 17.2, 20.9, 16.7, 21.95 }, { 16.7, 21.95, 15.45, 25.2 },
+	{ 15.6, 25.55, LANE, 25.55 },
+	-- outlane and inlane dividers, level with the tops of the slingshots
+	{ 1.9, 28.0, 1.9, 31.5 }, { 16.4, 28.0, 16.4, 31.5 },
 	-- the frames of the slingshots, which also carry the inlanes onto the flippers
 	{ 3.25, 28.0, 3.25, 31.0 }, { 3.25, 31.0, 5.85, 33.1 }, { 3.25, 28.0, 3.75, 28.6 }, { 5.75, 32.65, 5.85, 33.1 },
 	{ 15.1, 28.0, 15.1, 31.0 }, { 15.1, 31.0, 12.5, 33.1 }, { 15.1, 28.0, 14.6, 28.6 }, { 12.6, 32.65, 12.5, 33.1 },
@@ -95,10 +110,15 @@ local t = {
 	-- back to the plunger, and a gate lower down would catch it with nowhere to go. Then
 	-- the grotto's two: the lower lets a ball from the playfield into the passage, and the
 	-- upper lets it out onto the top lanes, but neither lets one back the other way.
-	gates = { { 15.0, 2.6, 14.7, 3.85 }, { 3.4, 8.3, 2.05, 9.4 }, { 4.8, 4.9, 4.75, 3.05 } },
+	gates = { { 15.0, 2.6, 14.7, 3.85 }, { 4.58, 7.4, 3.35, 9.2 }, { 4.7, 4.9, 3.9, 3.78 } },
 	posts = {
-		{ 7.0, 3.6, 0.25 }, { 9.1, 3.6, 0.25 }, { 11.2, 3.6, 0.25 }, { 7.0, 7.05, 0.25 }, { 9.1, 7.05, 0.25 }, { 11.2, 7.05, 0.25 },
-		{ 4.8, 4.9, 0.25 }, { 4.35, 14.45, 0.3 }, { 15.45, 25.2, 0.3 }, { 17.65, 20.4, 0.25 }, { 2.4, 12.8, 0.25 }, { 2.15, 15.1, 0.25 }, { 1.9, 26.0, 0.25 }, { 16.4, 26.0, 0.25 },
+		-- the top lane dividers
+		{ 4.8, 5.0, 0.25 }, { 7.03, 5.0, 0.25 }, { 9.1, 5.0, 0.25 }, { 11.24, 5.0, 0.25 },
+		{ 4.8, 7.05, 0.25 }, { 7.03, 7.05, 0.25 }, { 9.1, 7.05, 0.25 }, { 11.24, 7.05, 0.25 },
+		-- beside the star rollover, at the foot of the grotto island, and below the stand-ups
+		{ 4.32, 14.3, 0.3 }, { 2.73, 16.6, 0.33 }, { 0.91, 24.6, 0.33 },
+		-- either end of the dead rubber on the plastic at the foot of the right lane
+		{ 16.7, 21.95, 0.3 }, { 15.45, 25.2, 0.3 },
 	},
 
 	serve_position = { (LANE + W - 0.25) / 2, SERVE_Y },
@@ -141,9 +161,8 @@ local t = {
 	slings = {
 		{ 3.75, 28.6, 5.75, 32.65, name = 'Left Slingshot', switch = { ':X4', 0x10 }, kick = 55, coil = 'solenoid11' },
 		{ 12.6, 32.65, 14.6, 28.6, name = 'Right Slingshot', switch = { ':X4', 0x08 }, kick = 55, coil = 'solenoid13' },
-		-- the rubber on the island at the foot of the right lane
-		{ 15.45, 25.2, 17.65, 20.4, name = 'Rebound Rubber', switch = { ':X4', 0x01 }, kick = 25 },
-		{ 16.05, 14.6, 16.05, 16.6, name = 'Rebound Rubber', switch = { ':X4', 0x01 }, kick = 25 },
+		-- the rubber behind the drop targets, which a ball reaches with the targets down
+		{ 13.65, 12.6, 15.45, 18.1, name = 'Rebound Rubber', switch = { ':X4', 0x01 }, kick = 0 },
 	},
 
 	targets = {
@@ -156,11 +175,12 @@ local t = {
 		{ 8.55, 16.35, 9.75, 16.35, name = 'Centre Target', switch = { ':X2', 0x01 } },
 	},
 
-	-- the kickback holds the ball until Sol 8 fires it back up the lane, and the ROM
-	-- takes a little over five seconds to do that
+	-- the kickback holds the ball until Sol 8 fires it back up the lane. The ROM takes its
+	-- time, scoring the grotto first, so the plugin only kicks the ball out itself, at full
+	-- strength, after long enough that the ROM is plainly not going to
 	saucers = {
 		{ 1.0, 18.05, 0.7, name = 'Kickback Grotto', switch = { ':X3', 0x80 }, solenoid = 'solenoid7',
-		  kick = { 0, -92 }, timeout = 8, timeout_kick = { 0, -40 } },
+		  kick = { 0, -92 }, timeout = 30, timeout_kick = { 0, -92 } },
 	},
 
 	sensors = {
@@ -223,13 +243,23 @@ local t = {
 	-- targets, under the apron and outside the rail
 	closed = {
 		{ { 14.7, 3.85 }, { 16.0, 4.9 }, { 17.2, 7.0 }, { 18.0, 9.4 }, { 16.5, 7.45 }, { 13.0, 7.35 }, { 13.0, 5.1 } },
-		{ { 13.2, 12.2 }, { 16.05, 10.3 }, { 16.05, 17.9 }, { 15.45, 18.1 }, { 13.65, 12.6 } },
+		{ { 13.2, 12.2 }, { 14.15, 11.55 }, { 14.15, 9.7 }, { 16.05, 11.0 }, { 16.05, 17.9 }, { 15.45, 18.1 }, { 13.65, 12.6 } },
+		{ { 4.8, 5.0 }, { 3.23, 6.42 }, { 4.6, 7.4 }, { 4.8, 7.05 } },
+		{ { 4.8, 5.0 }, { 5.15, 5.0 }, { 5.15, 7.05 }, { 4.8, 7.05 } },
+		{ { 6.72, 5.0 }, { 7.34, 5.0 }, { 7.34, 7.05 }, { 6.72, 7.05 } },
+		{ { 8.79, 5.0 }, { 9.42, 5.0 }, { 9.42, 7.05 }, { 8.79, 7.05 } },
+		{ { 10.92, 5.0 }, { 11.55, 5.0 }, { 11.55, 7.05 }, { 10.92, 7.05 } },
+		{ { 2.05, 10.0 }, { 3.35, 9.25 }, { 3.35, 11.65 }, { 2.95, 12.2 }, { 2.6, 12.75 }, { 2.35, 13.35 }, { 2.25, 14.05 },
+			{ 2.27, 14.8 }, { 2.42, 15.5 }, { 2.73, 16.6 }, { 2.55, 17.1 }, { 2.05, 18.6 } },
+		{ { LANE, 18.1 }, { 17.95, 18.8 }, { 17.82, 19.5 }, { 17.5, 20.2 }, { 17.2, 20.9 }, { 16.7, 21.95 }, { 15.45, 25.2 },
+			{ 15.6, 25.55 }, { LANE, 25.55 } },
 		{ { 3.25, 28.0 }, { 3.75, 28.6 }, { 5.75, 32.65 }, { 5.85, 33.1 }, { 3.25, 31.0 } },
 		{ { 15.1, 28.0 }, { 14.6, 28.6 }, { 12.6, 32.65 }, { 12.5, 33.1 }, { 15.1, 31.0 } },
-		{ { 0.45, 19.6 }, { 2.2, 18.6 }, { 1.1, 23.7 }, { 0.45, 24.2 } },
+		{ { 0.45, 19.6 }, { 2.05, 18.65 }, { 2.55, 17.1 }, { 1.1, 23.7 }, { 0.45, 24.2 } },
 		{ { 0, 33.0 }, { 0.45, 33.0 }, { 8.0, 39.4 }, { 10.3, 39.4 }, { LANE, 33.0 }, { LANE, 36.6 }, { W, 36.6 }, { W, L }, { 0, L } },
 		{ { 0, 0 }, { W, 0 }, { W, 11.0 }, { W - 0.25, 11.0 }, { 19.6, 8.8 }, { 18.6, 6.3 }, { 17.0, 4.2 }, { 15.0, 2.6 }, { 13.0, 1.55 },
-			{ 10.0, 1.1 }, { 7.0, 1.75 }, { 5.0, 2.8 }, { 3.0, 4.6 }, { 1.7, 6.0 }, { 0.45, 8.6 }, { 0.45, 33.0 }, { 0, 33.0 } },
+			{ 10.0, 1.1 }, { 7.0, 1.75 }, { 5.0, 2.8 }, { 3.0, 4.6 }, { 2.6, 5.05 }, { 2.1, 5.65 }, { 1.6, 6.25 }, { 1.15, 6.9 },
+			{ 0.8, 7.6 }, { 0.55, 8.4 }, { 0.45, 9.2 }, { 0.45, 33.0 }, { 0, 33.0 } },
 	},
 
 	solenoid_names = {
