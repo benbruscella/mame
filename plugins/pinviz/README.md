@@ -44,6 +44,9 @@ walls the ball runs against. No artwork is used.
 
 Besides walls, posts and the features with switches, a playfield can give:
 
+- `solid = false` on a post that a rubber or guide wraps round, so that it is drawn but
+  the ball rolls on along the rubber instead of catching on the post.
+
 - `gates`: one-way gates, each passable from one side only.
 - `outhole`: the hole at the foot of the apron, and the outhole under it.
 - `lamps`: where each of the ROM's lamps is, for drawing.

@@ -117,8 +117,11 @@ local t = {
 		{ 4.8, 7.05, 0.25 }, { 7.03, 7.05, 0.25 }, { 9.1, 7.05, 0.25 }, { 11.24, 7.05, 0.25 },
 		-- beside the star rollover, at the foot of the grotto island, and below the stand-ups
 		{ 4.32, 14.3, 0.3 }, { 2.73, 16.6, 0.33 }, { 0.91, 24.6, 0.33 },
-		-- either end of the dead rubber on the plastic at the foot of the right lane
-		{ 16.7, 21.95, 0.3 }, { 15.45, 25.2, 0.3 },
+		-- either end of the dead rubber on the plastic at the foot of the right lane. The
+		-- rubber and the guide above it wrap round them, so a ball coming down the right
+		-- lane rolls on along both; as posts of their own they stuck out of that surface,
+		-- and a ball dropping onto the top one was thrown straight across the playfield.
+		{ 16.7, 21.95, 0.3, solid = false }, { 15.45, 25.2, 0.3, solid = false },
 	},
 
 	serve_position = { (LANE + W - 0.25) / 2, SERVE_Y },
