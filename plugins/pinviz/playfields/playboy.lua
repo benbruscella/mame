@@ -43,15 +43,12 @@ local more = {
 	{ 0.45, 9.2, 0.45, 33.0 }, { LANE, 9.4, LANE, 33.0 },
 	-- top lanes: four lanes between plastic dividers, each with a post at either end. The
 	-- leftmost divider is the edge of the triangular plastic beside the grotto passage.
-	{ 4.8, 5.0, 4.8, 7.05 }, { 5.15, 5.0, 5.15, 7.05 },
+	{ 5.15, 5.0, 5.15, 7.05 },
 	{ 6.72, 5.0, 6.72, 7.05 }, { 7.34, 5.0, 7.34, 7.05 },
 	{ 8.79, 5.0, 8.79, 7.05 }, { 9.42, 5.0, 9.42, 7.05 },
 	{ 10.92, 5.0, 10.92, 7.05 }, { 11.55, 5.0, 11.55, 7.05 },
 	-- the grotto: the triangular plastic is the passage's right side, between its gates
 	{ 4.75, 5.0, 3.23, 6.42 }, { 3.23, 6.42, 4.6, 7.4 },
-	-- the island under the top right plastic, whose outer edge is the shooter lane's guide
-	{ 14.7, 3.85, 16.0, 4.9 }, { 16.0, 4.9, 17.2, 7.0 }, { 17.2, 7.0, LANE, 9.4 },
-	{ LANE, 9.4, 16.5, 7.45 }, { 16.5, 7.45, 13.0, 7.35 }, { 13.0, 7.35, 13.0, 5.1 }, { 13.0, 5.1, 14.7, 3.85 },
 	-- the grotto lane, down to the floor the kickback sits on, and the island beside it,
 	-- whose far side curves round the star rollover to a post. The island's top slopes
 	-- into the lane, so a ball that falls back from the passage goes down to the kickback.
@@ -65,12 +62,14 @@ local more = {
 	-- targets is a switch, so it is listed with the slingshots.
 	{ 13.2, 12.2, 14.15, 11.55 }, { 14.15, 11.55, 14.15, 9.7 }, { 14.15, 9.7, 16.05, 11.0 },
 	{ 13.2, 12.2, 13.65, 12.6 }, { 15.45, 18.1, 16.05, 17.9 }, { 15.0, 18.2, 15.45, 18.1 }, { 16.05, 11.0, 16.05, 17.9 },
-	-- the plastic at the foot of the right lane: a guide curving down off the lane wall to
-	-- a post, a rubber with no switch behind it down to another, and the plastic's foot,
-	-- high enough that a ball can roll in under it to the right inlane and outlane
+	-- the plastic at the foot of the right lane: a guide curving down off the lane wall, a
+	-- rubber with no switch behind it carrying on down, and the plastic's foot, high
+	-- enough that a ball can roll in under it to the right inlane and outlane. A ball
+	-- coming down the right lane rolls along the guide and the rubber, out towards the
+	-- flippers.
 	{ LANE, 18.1, 17.95, 18.8 }, { 17.95, 18.8, 17.82, 19.5 }, { 17.82, 19.5, 17.5, 20.2 },
 	{ 17.5, 20.2, 17.2, 20.9 }, { 17.2, 20.9, 16.7, 21.95 }, { 16.7, 21.95, 15.45, 25.2 },
-	{ 15.6, 25.55, LANE, 25.55 },
+	{ 15.45, 25.2, 15.6, 25.55 }, { 15.6, 25.55, LANE, 25.55 },
 	-- outlane and inlane dividers, level with the tops of the slingshots
 	{ 1.9, 28.0, 1.9, 31.5 }, { 16.4, 28.0, 16.4, 31.5 },
 	-- the frames of the slingshots, which also carry the inlanes onto the flippers
@@ -85,6 +84,21 @@ local more = {
 	{ 0.45, 33.0, 8.0, 39.4 }, { LANE, 33.0, 10.3, 39.4 },
 }
 for _, s in ipairs(more) do walls[#walls + 1] = s end
+
+-- the island under the top right plastic. Its outer edge is the shooter lane's guide. Its
+-- underside is a ball guide, a quarter arc down onto the right lane's wall, which turns a
+-- ball shot up the right lane across the top of the playfield towards the grotto.
+local island = { { 14.7, 3.85 }, { 16.0, 4.9 }, { 17.2, 7.0 }, { LANE, 9.4 }, { LANE, 9.8 } }
+for i = 1, 8 do
+	local a = math.rad(i * 11.25)
+	island[#island + 1] = { 15.4 + 2.6 * math.cos(a), 9.8 - 2.48 * math.sin(a) }
+end
+island[#island + 1] = { 13.0, 7.32 }
+island[#island + 1] = { 13.0, 5.1 }
+for i = 1, #island do
+	local a, b = island[i], island[i % #island + 1]
+	walls[#walls + 1] = { a[1], a[2], b[1], b[2] }
+end
 
 local function stand_up(x, y, mask, number)
 	local x0, y0, x1, y1 = along(x, y, -0.25, 0.97, 1.0)
@@ -107,21 +121,18 @@ local t = {
 	walls = walls,
 	-- One way gates, each passable from one side only. Where the arch meets the playfield,
 	-- rather than at the top of the shooter lane: a launch too weak to clear the arch rolls
-	-- back to the plunger, and a gate lower down would catch it with nowhere to go. Then
+	-- back to the plunger, and a gate lower down would catch it with nowhere to go. It
+	-- stands square to the arch, so a ball coming round the arch from the grotto's kick
+	-- bounces back along it rather than dropping off the gate into the nearest lane. Then
 	-- the grotto's two: the lower lets a ball from the playfield into the passage, and the
 	-- upper lets it out onto the top lanes, but neither lets one back the other way.
-	gates = { { 15.0, 2.6, 14.7, 3.85 }, { 4.58, 7.4, 3.35, 9.2 }, { 4.7, 4.9, 3.9, 3.78 } },
+	gates = { { 15.43, 2.94, 14.7, 3.85 }, { 4.58, 7.4, 3.35, 9.2 }, { 4.7, 4.9, 3.9, 3.78 } },
 	posts = {
 		-- the top lane dividers
 		{ 4.8, 5.0, 0.25 }, { 7.03, 5.0, 0.25 }, { 9.1, 5.0, 0.25 }, { 11.24, 5.0, 0.25 },
 		{ 4.8, 7.05, 0.25 }, { 7.03, 7.05, 0.25 }, { 9.1, 7.05, 0.25 }, { 11.24, 7.05, 0.25 },
 		-- beside the star rollover, at the foot of the grotto island, and below the stand-ups
 		{ 4.32, 14.3, 0.3 }, { 2.73, 16.6, 0.33 }, { 0.91, 24.6, 0.33 },
-		-- either end of the dead rubber on the plastic at the foot of the right lane. The
-		-- rubber and the guide above it wrap round them, so a ball coming down the right
-		-- lane rolls on along both; as posts of their own they stuck out of that surface,
-		-- and a ball dropping onto the top one was thrown straight across the playfield.
-		{ 16.7, 21.95, 0.3, solid = false }, { 15.45, 25.2, 0.3, solid = false },
 	},
 
 	serve_position = { (LANE + W - 0.25) / 2, SERVE_Y },
@@ -156,9 +167,9 @@ local t = {
 	},
 
 	bumpers = {
-		{ 6.9, 10.6, 1.45, name = 'Left Thumper Bumper', switch = { ':X4', 0x80 }, kick = 65, coil = 'solenoid8' },
-		{ 11.25, 10.6, 1.45, name = 'Right Thumper Bumper', switch = { ':X4', 0x40 }, kick = 65, coil = 'solenoid9' },
-		{ 9.15, 14.7, 1.45, name = 'Bottom Thumper Bumper', switch = { ':X4', 0x20 }, kick = 65, coil = 'solenoid10' },
+		{ 6.9, 10.6, 1.45, name = 'Left Thumper Bumper', switch = { ':X4', 0x80 }, kick = 49, coil = 'solenoid8' },
+		{ 11.25, 10.6, 1.45, name = 'Right Thumper Bumper', switch = { ':X4', 0x40 }, kick = 49, coil = 'solenoid9' },
+		{ 9.15, 14.7, 1.45, name = 'Bottom Thumper Bumper', switch = { ':X4', 0x20 }, kick = 49, coil = 'solenoid10' },
 	},
 
 	slings = {
@@ -245,7 +256,7 @@ local t = {
 	-- everywhere a ball cannot be, for the drain test: under the plastics, behind the
 	-- targets, under the apron and outside the rail
 	closed = {
-		{ { 14.7, 3.85 }, { 16.0, 4.9 }, { 17.2, 7.0 }, { 18.0, 9.4 }, { 16.5, 7.45 }, { 13.0, 7.35 }, { 13.0, 5.1 } },
+		island,
 		{ { 13.2, 12.2 }, { 14.15, 11.55 }, { 14.15, 9.7 }, { 16.05, 11.0 }, { 16.05, 17.9 }, { 15.45, 18.1 }, { 13.65, 12.6 } },
 		{ { 4.8, 5.0 }, { 3.23, 6.42 }, { 4.6, 7.4 }, { 4.8, 7.05 } },
 		{ { 4.8, 5.0 }, { 5.15, 5.0 }, { 5.15, 7.05 }, { 4.8, 7.05 } },

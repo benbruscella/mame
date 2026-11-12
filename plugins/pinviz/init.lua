@@ -534,8 +534,7 @@ function pinviz.startplugin()
 			collide_segment(b, w[1], w[2], w[3], w[4], e)
 		end
 		for _, p in ipairs(tbl.posts or {}) do
-			-- a post a rubber wraps round is part of the rubber's surface, and only drawn
-			if p.solid ~= false then collide_circle(b, p[1], p[2], p[3], 0.6) end
+			collide_circle(b, p[1], p[2], p[3], 0.6)
 		end
 		-- one way gates (shooter lane top): solid for a ball on the blocked side of the
 		-- directed segment (positive cross product), open from the other side
