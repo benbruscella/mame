@@ -114,8 +114,8 @@ local t = {
 	name = 'Playboy',
 	width = W, length = L, lane = LANE,
 	ball_radius = 0.53,
-	gravity = 43.0,
-	rolling_friction = 0.12,
+	gravity = 18.17,
+	rolling_friction = 0.078,
 	wall_restitution = 0.45,
 
 	walls = walls,
@@ -136,7 +136,7 @@ local t = {
 	},
 
 	serve_position = { (LANE + W - 0.25) / 2, SERVE_Y },
-	launch_speed = 95,
+	launch_speed = 62,
 	serve_solenoids = {},
 	serve_on_flipper_enable = true,
 	outhole_solenoid = 'solenoid6',
@@ -167,14 +167,14 @@ local t = {
 	},
 
 	bumpers = {
-		{ 6.9, 10.6, 1.45, name = 'Left Thumper Bumper', switch = { ':X4', 0x80 }, kick = 49, coil = 'solenoid8' },
-		{ 11.25, 10.6, 1.45, name = 'Right Thumper Bumper', switch = { ':X4', 0x40 }, kick = 49, coil = 'solenoid9' },
-		{ 9.15, 14.7, 1.45, name = 'Bottom Thumper Bumper', switch = { ':X4', 0x20 }, kick = 49, coil = 'solenoid10' },
+		{ 6.9, 10.6, 1.45, name = 'Left Thumper Bumper', switch = { ':X4', 0x80 }, kick = 32, coil = 'solenoid8' },
+		{ 11.25, 10.6, 1.45, name = 'Right Thumper Bumper', switch = { ':X4', 0x40 }, kick = 32, coil = 'solenoid9' },
+		{ 9.15, 14.7, 1.45, name = 'Bottom Thumper Bumper', switch = { ':X4', 0x20 }, kick = 32, coil = 'solenoid10' },
 	},
 
 	slings = {
-		{ 3.75, 28.6, 5.75, 32.65, name = 'Left Slingshot', switch = { ':X4', 0x10 }, kick = 55, coil = 'solenoid11' },
-		{ 12.6, 32.65, 14.6, 28.6, name = 'Right Slingshot', switch = { ':X4', 0x08 }, kick = 55, coil = 'solenoid13' },
+		{ 3.75, 28.6, 5.75, 32.65, name = 'Left Slingshot', switch = { ':X4', 0x10 }, kick = 36, coil = 'solenoid11' },
+		{ 12.6, 32.65, 14.6, 28.6, name = 'Right Slingshot', switch = { ':X4', 0x08 }, kick = 36, coil = 'solenoid13' },
 		-- the rubber behind the drop targets, which a ball reaches with the targets down
 		{ 13.65, 12.6, 15.45, 18.1, name = 'Rebound Rubber', switch = { ':X4', 0x01 }, kick = 0 },
 	},
@@ -194,7 +194,7 @@ local t = {
 	-- strength, after long enough that the ROM is plainly not going to
 	saucers = {
 		{ 1.0, 18.05, 0.7, name = 'Kickback Grotto', switch = { ':X3', 0x80 }, solenoid = 'solenoid7',
-		  kick = { 0, -92 }, timeout = 30, timeout_kick = { 0, -92 } },
+		  kick = { 0, -60 }, timeout = 30, timeout_kick = { 0, -60 } },
 	},
 
 	sensors = {

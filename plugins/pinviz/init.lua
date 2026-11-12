@@ -51,13 +51,13 @@ function pinviz.startplugin()
 	local FLIPPER_THICKNESS = 0.22   -- half width of the bat, inches
 	local FLIPPER_RESTITUTION = 0.35 -- flipper rubber, bouncier than a wall
 	local FLIPPER_FRICTION = 0.12    -- drag along the rubber, gives a ball met off centre some curve
-	local FLIPPER_IMPACT = 5.0       -- inches per second into the bat that make a contact an impact
-	-- The coil drives the bat through its stroke in about twenty milliseconds, which
+	local FLIPPER_IMPACT = 3.25      -- inches per second into the bat that make a contact an impact
+	-- The coil drives the bat through its stroke in about thirty milliseconds, which
 	-- over fifty odd degrees is a good deal faster than the spring brings it back.
 	-- Shot speed comes almost entirely from this: the bat's surface speed at the
 	-- contact is omega times the distance out along the bat.
-	local FLIPPER_RATE_UP = 2800     -- degrees per second, driven
-	local FLIPPER_RATE_DOWN = 1100   -- returning on the spring
+	local FLIPPER_RATE_UP = 1820     -- degrees per second, driven
+	local FLIPPER_RATE_DOWN = 715    -- returning on the spring
 	local FRAME_DT = 1 / 60
 	-- the plunger takes this long to pull all the way back, in seconds
 	local PLUNGER_PULL = 0.9
@@ -66,16 +66,18 @@ function pinviz.startplugin()
 	local KICK_SPREAD = math.rad(5)      -- radians either way
 	local KICK_SPEED_SPREAD = 0.08       -- fraction either way
 	-- how fast a drained ball sinks down through the hole to the outhole, inches a second
-	local SINK_SPEED = 5
-	-- slow motion for the ball, which leaves the machine running at full speed; PgUp and
-	-- PgDn change it while playing, a tenth at a time
-	local SPEEDS = { 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 }
+	local SINK_SPEED = 3.25
+	-- The speeds and rates here and in the playfields are paced against a real machine:
+	-- Quench, who knows the machine, matched the ball's pace by eye. PgUp and PgDn change the
+	-- ball's speed while playing, a tenth at a time, and leave the machine running at
+	-- full speed.
+	local SPEEDS = { 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5 }
 	local SWITCH_FRAMES = 5     -- how long a hit holds a matrix switch closed
-	local BALL_RESTITUTION_MIN_SPEED = 2.0
-	-- A pinball leaves the plunger at about 100 in/s and a flipper can send it faster,
-	-- but nothing on a playfield reaches this. Clamping keeps a bad contact, where the
-	-- ball is squeezed between two surfaces and pumped, from throwing it off the table.
-	local MAX_SPEED = 260
+	-- A pinball leaves the plunger at 60 in/s or so and a flipper can send it twice as
+	-- fast, but nothing on a playfield reaches this. Clamping keeps a bad contact, where
+	-- the ball is squeezed between two surfaces and pumped, from throwing it off the
+	-- playfield.
+	local MAX_SPEED = 170
 
 	-- --------------------------------------------------------------------
 	-- helpers
@@ -494,9 +496,9 @@ function pinviz.startplugin()
 			if b.y > top then
 				-- through the hole it drops in and eases to a gentle sink, slow enough to watch
 				-- go down: however fast it came, the edge of the hole takes most of that
-				local ease = math.min(1, 10 * dt)
+				local ease = math.min(1, 6.5 * dt)
 				b.vy = math.min(b.vy, 2 * SINK_SPEED)
-				b.vx = b.vx + ((hx - b.x) * 3 - b.vx) * ease
+				b.vx = b.vx + ((hx - b.x) * 2 - b.vx) * ease
 				b.vy = b.vy + (SINK_SPEED - b.vy) * ease
 			end
 			if b.y >= hy then
@@ -692,11 +694,11 @@ function pinviz.startplugin()
 
 		-- a ball that has stopped against geometry gets a nudge, as a player would
 		local speed2 = b.vx * b.vx + b.vy * b.vy
-		if speed2 < 0.25 then
+		if speed2 < 0.1 then
 			s.still = (s.still or 0) + 1
 			if s.still > 3 * 60 * SUBSTEPS and not draintest and not cradled(s) then
-				b.vx = b.vx + (math.random() - 0.5) * 40
-				b.vy = b.vy - 20 - math.random() * 20
+				b.vx = b.vx + (math.random() - 0.5) * 26
+				b.vy = b.vy - 13 - math.random() * 13
 				s.still = 0
 				log(s, 'nudge (ball stuck)')
 			end
@@ -785,7 +787,7 @@ function pinviz.startplugin()
 			end
 			local left, right = s.flippers[1].pivot, s.flippers[2].pivot
 			for x = left[1] + 0.4, right[1] - 0.4, 0.5 do
-				for _, vx in ipairs({ -12, 12 }) do dt.starts[#dt.starts + 1] = { x, left[2] - 2.5, vx, 0 } end
+				for _, vx in ipairs({ -8, 8 }) do dt.starts[#dt.starts + 1] = { x, left[2] - 2.5, vx, 0 } end
 			end
 		end
 		dt.frames = dt.frames + 1
@@ -793,7 +795,7 @@ function pinviz.startplugin()
 		if running and s.state ~= 'play' then
 			dt.drained = dt.drained + 1
 			dt.times[#dt.times + 1] = dt.frames / 60
-		elseif running and dt.frames > 20 * 60 then
+		elseif running and dt.frames > 30 * 60 then
 			local b, st = s.ball, dt.starts[dt.trial]
 			dt.held[#dt.held + 1] = string.format('%s held at %.2f,%.2f', st[5] or string.format('from %.1f,%.1f', st[1], st[2]), b.x, b.y)
 		elseif running then
@@ -830,16 +832,16 @@ function pinviz.startplugin()
 		elseif ct.phase == 1 then
 			-- settled means resting on the bat rather than rolling off it
 			local speed = b and math.sqrt(b.vx * b.vx + b.vy * b.vy) or 0
-			if b and speed < 6 and b.y < f.pivot[2] + 2.5 then
+			if b and speed < 4 and b.y < f.pivot[2] + 2.5 then
 				ct.still = (ct.still or 0) + 1
 			else
 				ct.still = 0
 			end
-			if (ct.still or 0) > 20 then
+			if (ct.still or 0) > 30 then
 				ct.settled = ct.settled + 1
 				ct.rests[#ct.rests + 1] = math.sqrt((b.x - f.pivot[1]) ^ 2 + (b.y - f.pivot[2]) ^ 2)
 				s.auto_flip[1] = 0; ct.phase = 2; ct.frames = 0; ct.still = 0
-			elseif ct.frames > 180 then
+			elseif ct.frames > 280 then
 				ct.lost = ct.lost + 1
 				if ct.lost <= 3 and b then
 					print(string.format('[cradle] ball ended at (%.2f, %.2f), pivot is (%.2f, %.2f), state %s',
@@ -852,11 +854,11 @@ function pinviz.startplugin()
 		elseif ct.phase == 2 then
 			-- let the bat fall and the ball roll out along it, then shoot: flipping before
 			-- it has rolled is a shot off the heel, where the bat has no leverage
-			if ct.frames == 24 then s.auto_flip[1] = 10 end
-			if ct.frames > 28 and b and not ct.exit and b.vy < 0 then
+			if ct.frames == 37 then s.auto_flip[1] = 15 end
+			if ct.frames > 43 and b and not ct.exit and b.vy < 0 then
 				ct.exit = math.sqrt(b.vx * b.vx + b.vy * b.vy)
 			end
-			if ct.frames > 60 then ct.phase = 3 end
+			if ct.frames > 92 then ct.phase = 3 end
 		elseif ct.phase == 3 then
 			ct.trials = ct.trials + 1
 			if ct.exit then ct.exits[#ct.exits + 1] = ct.exit end
@@ -886,8 +888,8 @@ function pinviz.startplugin()
 		elseif ft.phase == 1 then
 			-- flip so the bat is mid sweep when the ball arrives, which is what a player
 			-- does; the lead is half the stroke, and scales with the ball's speed
-			if s.ball.y > f.pivot[2] - 1.2 - fliptest * 0.010 then s.auto_flip[1] = 10; ft.phase = 2; ft.frames = 0 end
-			if ft.frames > 120 then ft.phase = 3 end
+			if s.ball.y > f.pivot[2] - 1.2 - fliptest * 0.0154 then s.auto_flip[1] = 15; ft.phase = 2; ft.frames = 0 end
+			if ft.frames > 185 then ft.phase = 3 end
 		elseif ft.phase == 2 then
 			-- the shot is whatever the bat threw: record the ball the moment it is
 			-- travelling back up the table, so exits can be compared trial to trial
@@ -896,7 +898,7 @@ function pinviz.startplugin()
 				ft.exit = math.sqrt(b.vx * b.vx + b.vy * b.vy)
 				ft.exit_ang = math.deg(math.atan(b.vx, -b.vy))
 			end
-			if ft.frames > 40 then ft.phase = 3 end
+			if ft.frames > 62 then ft.phase = 3 end
 		elseif ft.phase == 3 then
 			ft.trials = ft.trials + 1
 			-- a ball the bat never sent back up the table is one it passed through; one
@@ -960,7 +962,7 @@ function pinviz.startplugin()
 		local cx = s.tbl.width / 2
 		if b.vy > 0 and b.y > s.tbl.length - 9 then
 			local i = (b.x < cx) and 1 or 2
-			if s.auto_flip[i] == 0 and math.random() < 0.15 then s.auto_flip[i] = 8 end
+			if s.auto_flip[i] == 0 and math.random() < 0.15 then s.auto_flip[i] = 12 end
 		end
 	end
 
@@ -1017,7 +1019,7 @@ function pinviz.startplugin()
 			local timeout = s.saucer_frames > (sc.timeout or 6) * 60
 			if rose(s, sc.solenoid) or timeout then
 				hold_switch(s, sc.switch, false)
-				local kick = timeout and (sc.timeout_kick or { 0, 15 }) or sc.kick
+				local kick = timeout and (sc.timeout_kick or { 0, 10 }) or sc.kick
 				s.ball.vx, s.ball.vy = kick[1], kick[2]
 				s.state = 'play'
 				s.saucer_cooldown = 30
@@ -1062,15 +1064,15 @@ function pinviz.startplugin()
 		-- a small push downhill frees it and the drain or the flippers take over.
 		if s.state == 'play' and s.ball and not draintest and not cradled(s) then
 			local b = s.ball
-			if math.sqrt(b.vx * b.vx + b.vy * b.vy) < 3.0 then
+			if math.sqrt(b.vx * b.vx + b.vy * b.vy) < 2.0 then
 				s.stuck_frames = (s.stuck_frames or 0) + 1
 				if s.stuck_frames > 90 then
 					log(s, string.format('ball stuck at (%.1f, %.1f), nudged', b.x, b.y))
 					-- downhill, and towards the middle of the table rather than further
 					-- into the corner it is wedged in: a ball balanced on the end of an
 					-- apron rail came straight back otherwise
-					b.vy = b.vy + 18
-					b.vx = b.vx + (b.x < tbl.width / 2 and 9 or -9)
+					b.vy = b.vy + 12
+					b.vx = b.vx + (b.x < tbl.width / 2 and 6 or -6)
 					s.stuck_frames = 0
 				end
 			else
@@ -1366,7 +1368,7 @@ function pinviz.startplugin()
 				ui:draw_text(tx, ay, fit(tbl.name), C_TITLE)
 				ui:draw_text(tx, ay + lh, fit('ball ' .. s.state), C_TEXT)
 				ui:draw_text(tx, ay + 2 * lh, fit('flippers ' .. (s.flippers_enabled and 'on' or 'off')), C_TEXT)
-				if SPEEDS[s.speed] < 1 then ui:draw_text(tx, ay + 3 * lh, fit(string.format('speed %d%%', SPEEDS[s.speed] * 100)), C_TITLE) end
+				if SPEEDS[s.speed] ~= 1 then ui:draw_text(tx, ay + 3 * lh, fit(string.format('speed %d%%', SPEEDS[s.speed] * 100)), C_TITLE) end
 				local y = ay + 4 * lh
 				for i = 1, math.min(#s.events, 14) do
 					-- leave off the time, which is the least use in a narrow column
@@ -1448,7 +1450,7 @@ function pinviz.startplugin()
 		s.plunge_code = input:code_from_token('KEYCODE_SPACE')
 		s.faster_code = input:code_from_token('KEYCODE_PGUP')
 		s.slower_code = input:code_from_token('KEYCODE_PGDN')
-		s.speed = #SPEEDS
+		for i, v in ipairs(SPEEDS) do if v == 1 then s.speed = i end end
 		local wanted = tonumber(os.getenv('PINVIZ_SPEED'))
 		if wanted then
 			for i, v in ipairs(SPEEDS) do if v <= wanted + 1e-6 then s.speed = i end end

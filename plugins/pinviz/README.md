@@ -22,9 +22,10 @@ ignores coins for about twelve seconds after power on, during its self test.
 |---|---|
 | Left and right Shift | Flippers |
 | Space | Hold to pull the plunger back, and let go to launch. The rod at the foot of the shooter lane draws back as it is held, and the gauge beside it shows the strength. |
-| PgDn and PgUp | Slow the ball down or speed it up again, a tenth at a time, down to a tenth of full speed. The machine runs at full speed throughout. |
+| PgDn and PgUp | Slow the ball down or speed it up, a tenth at a time, from a tenth of full speed to one and a half times it. The machine runs at full speed throughout. |
 
-`PINVIZ_SPEED=0.6` starts at 60% speed.
+Full speed is paced against a real machine: Quench, who knows it well, matched the
+ball's pace by eye. `PINVIZ_SPEED=0.6` starts at 60% of it.
 
 A ball held on a raised flipper stays there, ready for the shot. A ball that stops
 anywhere else for a while gets a small nudge, as a player would give it. A drained ball
