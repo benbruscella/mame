@@ -55,7 +55,9 @@ function pinviz.startplugin()
 	-- The coil drives the bat through its stroke in about thirty milliseconds, which
 	-- over fifty odd degrees is a good deal faster than the spring brings it back.
 	-- Shot speed comes almost entirely from this: the bat's surface speed at the
-	-- contact is omega times the distance out along the bat.
+	-- contact is omega times the distance out along the bat. Coils, springs and
+	-- transformers differ between makers and eras, so a playfield can set its own with
+	-- flipper_rate_up and flipper_rate_down; these are the defaults.
 	local FLIPPER_RATE_UP = 1820     -- degrees per second, driven
 	local FLIPPER_RATE_DOWN = 715    -- returning on the spring
 	local FRAME_DT = 1 / 60
@@ -65,6 +67,8 @@ function pinviz.startplugin()
 	-- every ball launched the same way plays out the same
 	local KICK_SPREAD = math.rad(5)      -- radians either way
 	local KICK_SPEED_SPREAD = 0.08       -- fraction either way
+	-- inches per second into a gate that make a contact a bounce, not a ball resting there
+	local GATE_IMPACT = 3.25
 	-- how fast a drained ball sinks down through the hole to the outhole, inches a second
 	local SINK_SPEED = 3.25
 	-- The speeds and rates here and in the playfields are paced against a real machine:
@@ -539,11 +543,22 @@ function pinviz.startplugin()
 			collide_circle(b, p[1], p[2], p[3], 0.6)
 		end
 		-- one way gates (shooter lane top): solid for a ball on the blocked side of the
-		-- directed segment (positive cross product), open from the other side
+		-- directed segment (positive cross product), open from the other side. A gate's
+		-- wire flap swings on its hinge, so a ball meeting it from the blocked side comes
+		-- back off it at an angle that varies from ball to ball, by up to the playfield's
+		-- gate_scatter degrees either way.
 		for _, g in ipairs(tbl.gates or {}) do
 			local cross = (g[3] - g[1]) * (b.y - g[2]) - (g[4] - g[2]) * (b.x - g[1])
 			if cross > 0 then
-				collide_segment(b, g[1], g[2], g[3], g[4], 0.3)
+				local ivx, ivy = b.vx, b.vy
+				local hit, nx, ny = collide_segment(b, g[1], g[2], g[3], g[4], 0.3)
+				if hit and s.gate_scatter > 0 and ivx * nx + ivy * ny < -GATE_IMPACT then
+					local a = (math.random() * 2 - 1) * s.gate_scatter
+					local c, sn = math.cos(a), math.sin(a)
+					local vx, vy = b.vx * c - b.vy * sn, b.vx * sn + b.vy * c
+					-- never turn the ball back into the gate
+					if vx * nx + vy * ny > 0 then b.vx, b.vy = vx, vy end
+				end
 			end
 		end
 
@@ -734,7 +749,7 @@ function pinviz.startplugin()
 		for i, f in ipairs(s.flippers) do
 			local pressed = enabled and (input:code_pressed(f.code) or ((autopilot or fliptest > 0 or cradletest) and s.auto_flip[i] > 0))
 			f.target = pressed and f.up or f.rest
-			f.rate = pressed and FLIPPER_RATE_UP or FLIPPER_RATE_DOWN
+			f.rate = pressed and f.rate_up or f.rate_down
 		end
 		s.flippers_enabled = enabled
 	end
@@ -827,7 +842,7 @@ function pinviz.startplugin()
 		if ct.phase == 0 and ct.frames > 45 then
 			-- well above the bat and at rest: the bat only moves while a ball is in
 			-- play, so it needs the ball's fall to finish rising before contact
-			new_ball(s, f.pivot[1] + 1.5, f.pivot[2] - 6.0, 0, 0)
+			new_ball(s, f.pivot[1] + f.length / 2, f.pivot[2] - 6.0, 0, 0)
 			s.state = 'play'; s.flippers_enabled = true; ct.phase = 1; ct.frames = 0
 		elseif ct.phase == 1 then
 			-- settled means resting on the bat rather than rolling off it
@@ -883,7 +898,9 @@ function pinviz.startplugin()
 		ft.frames = ft.frames + 1
 		local f = s.flippers[1]
 		if ft.phase == 0 and ft.frames > 60 then
-			new_ball(s, f.pivot[1] + 1.6 + (flipspread and (ft.trials % 5) * 0.3 or 0.6), f.pivot[2] - 6, 0, fliptest)
+			-- from a little over half way along the bat to its tip
+			local along = 0.53 + (flipspread and (ft.trials % 5) * 0.1 or 0.2)
+			new_ball(s, f.pivot[1] + along * f.length, f.pivot[2] - 6, 0, fliptest)
 			s.state = 'play'; s.flippers_enabled = true; ft.phase = 1; ft.frames = 0
 		elseif ft.phase == 1 then
 			-- flip so the bat is mid sweep when the ball arrives, which is what a player
@@ -1368,7 +1385,7 @@ function pinviz.startplugin()
 				ui:draw_text(tx, ay, fit(tbl.name), C_TITLE)
 				ui:draw_text(tx, ay + lh, fit('ball ' .. s.state), C_TEXT)
 				ui:draw_text(tx, ay + 2 * lh, fit('flippers ' .. (s.flippers_enabled and 'on' or 'off')), C_TEXT)
-				if SPEEDS[s.speed] ~= 1 then ui:draw_text(tx, ay + 3 * lh, fit(string.format('speed %d%%', SPEEDS[s.speed] * 100)), C_TITLE) end
+				if SPEEDS[s.speed] ~= 1 then ui:draw_text(tx, ay + 3 * lh, fit(string.format('speed %d%%', math.floor(SPEEDS[s.speed] * 100 + 0.5))), C_TITLE) end
 				local y = ay + 4 * lh
 				for i = 1, math.min(#s.events, 14) do
 					-- leave off the time, which is the least use in a narrow column
@@ -1442,9 +1459,14 @@ function pinviz.startplugin()
 		end
 		emu.print_info(string.format('pinviz: %d features placed from the layout, %d from the table, %d without a position', placed, kept, dropped))
 		local input = manager.machine.input
+		s.gate_scatter = math.rad(tbl.gate_scatter or 0)
 		for i, f in ipairs(tbl.flippers) do
-			s.flippers[i] = { pivot = f.pivot, length = f.length, rest = f.rest, up = f.up,
-				angle = f.rest, prev_angle = f.rest, target = f.rest, rate = FLIPPER_RATE_DOWN, omega = 0, code = input:code_from_token(f.key) }
+			-- a flipper can have its own rates, a small upper flipper on a weaker coil say;
+			-- otherwise it takes the playfield's, or the defaults
+			local up = f.rate_up or tbl.flipper_rate_up or FLIPPER_RATE_UP
+			local down = f.rate_down or tbl.flipper_rate_down or FLIPPER_RATE_DOWN
+			s.flippers[i] = { pivot = f.pivot, length = f.length, rest = f.rest, up = f.up, rate_up = up, rate_down = down,
+				angle = f.rest, prev_angle = f.rest, target = f.rest, rate = down, omega = 0, code = input:code_from_token(f.key) }
 			s.auto_flip[i] = 0
 		end
 		s.plunge_code = input:code_from_token('KEYCODE_SPACE')

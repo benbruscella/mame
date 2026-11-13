@@ -127,6 +127,9 @@ local t = {
 	-- the grotto's two: the lower lets a ball from the playfield into the passage, and the
 	-- upper lets it out onto the top lanes, but neither lets one back the other way.
 	gates = { { 15.43, 2.94, 14.7, 3.85 }, { 4.58, 7.4, 3.35, 9.2 }, { 4.7, 4.9, 3.9, 3.78 } },
+	-- A ball coming off the grotto's kick bounces back off the gates at the top, and
+	-- would come down the same top lane every time without this.
+	gate_scatter = 25,
 	posts = {
 		-- the top lane dividers
 		{ 4.8, 5.0, 0.25 }, { 7.03, 5.0, 0.25 }, { 9.1, 5.0, 0.25 }, { 11.24, 5.0, 0.25 },
@@ -147,12 +150,17 @@ local t = {
 	-- the hole at the foot of the apron, and the outhole under it
 	outhole = { x = 9.15, y = 41.0, top = 39.4 },
 
+	-- Three inch bats: three inches overall, from the back of the round end at the pivot
+	-- to the far side of the tip. Measured off the photograph, the pivot is 2.3 inches
+	-- from the centre of the tip, whose rubber is a little over a quarter inch round. A
+	-- bat here is a uniform 0.22 either side of its centre line, so it reaches as far as
+	-- the real one at 2.36, and the gap between the tips matches the machine's.
 	flippers = {
-		-- three inch bats leave nearly two inches between the tips. The ball needs 1.5 to
-		-- pass, with the bats' thickness, and much less than that and it balances there.
-		{ pivot = { 5.7, 34.8 }, length = 3.0, rest = 32, up = -28, key = 'KEYCODE_LSHIFT' },
-		{ pivot = { 12.65, 34.8 }, length = 3.0, rest = 148, up = 208, key = 'KEYCODE_RSHIFT' },
+		{ pivot = { 5.7, 34.8 }, length = 2.36, rest = 32, up = -15, key = 'KEYCODE_LSHIFT' },
+		{ pivot = { 12.65, 34.8 }, length = 2.36, rest = 148, up = 195, key = 'KEYCODE_RSHIFT' },
 	},
+	-- the spring brings a bat back down faster than the plugin's default
+	flipper_rate_down = 950,
 
 	-- by35.cpp reads these through its own latch rather than an input. It releases the
 	-- outhole itself on solenoid6, but this machine runs with the default solenoid
@@ -167,9 +175,9 @@ local t = {
 	},
 
 	bumpers = {
-		{ 6.9, 10.6, 1.45, name = 'Left Thumper Bumper', switch = { ':X4', 0x80 }, kick = 32, coil = 'solenoid8' },
-		{ 11.25, 10.6, 1.45, name = 'Right Thumper Bumper', switch = { ':X4', 0x40 }, kick = 32, coil = 'solenoid9' },
-		{ 9.15, 14.7, 1.45, name = 'Bottom Thumper Bumper', switch = { ':X4', 0x20 }, kick = 32, coil = 'solenoid10' },
+		{ 6.9, 10.6, 1.45, name = 'Left Thumper Bumper', switch = { ':X4', 0x80 }, kick = 26, coil = 'solenoid8' },
+		{ 11.25, 10.6, 1.45, name = 'Right Thumper Bumper', switch = { ':X4', 0x40 }, kick = 26, coil = 'solenoid9' },
+		{ 9.15, 14.7, 1.45, name = 'Bottom Thumper Bumper', switch = { ':X4', 0x20 }, kick = 26, coil = 'solenoid10' },
 	},
 
 	slings = {

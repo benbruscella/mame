@@ -45,7 +45,12 @@ walls the ball runs against. No artwork is used.
 
 Besides walls, posts and the features with switches, a playfield can give:
 
-- `gates`: one-way gates, each passable from one side only.
+- `gates`: one-way gates, each passable from one side only, and `gate_scatter`, how many
+  degrees either way a ball's bounce off the blocked side of a gate varies.
+- `flipper_rate_up` and `flipper_rate_down`: how fast the bats swing up when the coil
+  drives them and back down on the spring, in degrees per second. Coils, springs and
+  transformers differ between makers and eras, so the flipper strength belongs to the
+  machine. A flipper can also take its own `rate_up` and `rate_down`.
 - `outhole`: the hole at the foot of the apron, and the outhole under it.
 - `lamps`: where each of the ROM's lamps is, for drawing.
 - `closed`: where a ball can never be, under plastics and outside the rails, for the
