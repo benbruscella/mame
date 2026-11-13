@@ -69,6 +69,10 @@ function pinviz.startplugin()
 	local KICK_SPEED_SPREAD = 0.08       -- fraction either way
 	-- inches per second into a gate that make a contact a bounce, not a ball resting there
 	local GATE_IMPACT = 3.25
+	-- how much a ball's speed off a gate varies, fraction either way. A ball coming back
+	-- along a curved rail rides it while it is fast, and drops off it once it slows, so
+	-- this decides where it comes down as much as the angle does.
+	local GATE_SPEED_SPREAD = 0.6
 	-- how fast a drained ball sinks down through the hole to the outhole, inches a second
 	local SINK_SPEED = 3.25
 	-- The speeds and rates here and in the playfields are paced against a real machine:
@@ -546,7 +550,7 @@ function pinviz.startplugin()
 		-- directed segment (positive cross product), open from the other side. A gate's
 		-- wire flap swings on its hinge, so a ball meeting it from the blocked side comes
 		-- back off it at an angle that varies from ball to ball, by up to the playfield's
-		-- gate_scatter degrees either way.
+		-- gate_scatter degrees either way, and with more or less of its speed.
 		for _, g in ipairs(tbl.gates or {}) do
 			local cross = (g[3] - g[1]) * (b.y - g[2]) - (g[4] - g[2]) * (b.x - g[1])
 			if cross > 0 then
@@ -554,7 +558,8 @@ function pinviz.startplugin()
 				local hit, nx, ny = collide_segment(b, g[1], g[2], g[3], g[4], 0.3)
 				if hit and s.gate_scatter > 0 and ivx * nx + ivy * ny < -GATE_IMPACT then
 					local a = (math.random() * 2 - 1) * s.gate_scatter
-					local c, sn = math.cos(a), math.sin(a)
+					local k = 1 + (math.random() * 2 - 1) * GATE_SPEED_SPREAD
+					local c, sn = math.cos(a) * k, math.sin(a) * k
 					local vx, vy = b.vx * c - b.vy * sn, b.vx * sn + b.vy * c
 					-- never turn the ball back into the gate
 					if vx * nx + vy * ny > 0 then b.vx, b.vy = vx, vy end
@@ -1314,11 +1319,25 @@ function pinviz.startplugin()
 				circle(sc[1], sc[2], sc[3], flashing(sc.name) and C_FLASH or C_SLING, 12)
 			end
 
+			-- A solid bat, round at both ends and tapering from the pivot to the tip: lines
+			-- side by side across it, a pixel or so apart, then a disc at each end. The
+			-- tip is as wide as the bat the ball hits; the heel is drawn fuller, as on the
+			-- machine, where the inlane guide covers it.
 			for _, f in ipairs(s.flippers) do
 				local x0, y0, x1, y1 = flipper_ends(f)
 				local c = s.flippers_enabled and C_FLIP or C_FLIP_OFF
-				thick(x0, y0, x1, y1, c, FLIPPER_THICKNESS)
-				disc(x0, y0, 0.32, c, 4)
+				local r0, r1 = 0.32, FLIPPER_THICKNESS
+				local dx, dy = x1 - x0, y1 - y0
+				local len = math.sqrt(dx * dx + dy * dy)
+				local nx, ny = -dy / len, dx / len
+				local n = math.max(6, math.ceil(circular(r0) * W * 2.5))
+				for k = 0, n do
+					local u = 2 * k / n - 1
+					line(x0 + nx * r0 * u, y0 + ny * r0 * u, x1 + nx * r1 * u, y1 + ny * r1 * u, c)
+				end
+				disc(x1, y1, r1, c, 6)
+				disc(x0, y0, r0, c, 6)
+				disc(x0, y0, 0.1, C_POST, 3)
 			end
 
 			-- the plunger, at the foot of the shooter lane: the rod draws back as Space is held,

@@ -46,7 +46,8 @@ walls the ball runs against. No artwork is used.
 Besides walls, posts and the features with switches, a playfield can give:
 
 - `gates`: one-way gates, each passable from one side only, and `gate_scatter`, how many
-  degrees either way a ball's bounce off the blocked side of a gate varies.
+  degrees either way a ball's bounce off the blocked side of a gate varies. With it set,
+  the speed of the bounce varies too, as a swinging wire flap takes more or less of it.
 - `flipper_rate_up` and `flipper_rate_down`: how fast the bats swing up when the coil
   drives them and back down on the spring, in degrees per second. Coils, springs and
   transformers differ between makers and eras, so the flipper strength belongs to the

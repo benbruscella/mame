@@ -29,18 +29,55 @@ local function along(x, y, dx, dy, length)
 	return x - hx, y - hy, x + hx, y + hy
 end
 
--- the outer rail, up the side of the shooter lane, over the top and down to the grotto.
--- Round the top left it is a smooth curve, which a ball kicked up the grotto lane rides
--- on round to the top lanes; a corner there throws the ball across the passage instead.
-local arch = { { 0.45, 9.2 }, { 0.55, 8.4 }, { 0.8, 7.6 }, { 1.15, 6.9 }, { 1.6, 6.25 }, { 2.1, 5.65 }, { 2.6, 5.05 },
-	{ 3.0, 4.6 }, { 5.0, 2.8 }, { 7.0, 1.75 }, { 10.0, 1.1 },
-	{ 13.0, 1.55 }, { 15.0, 2.6 }, { 17.0, 4.2 }, { 18.6, 6.3 }, { 19.6, 8.8 }, { W - 0.25, 11.0 }, { W - 0.25, L - 5 } }
+-- A smooth curve through traced points, as short segments: a centripetal Catmull-Rom
+-- spline, which passes through every point and, unlike the plain one, does not loop or
+-- kink where the points are unevenly spaced. The first and last points only set the
+-- direction the curve leaves and arrives in, so a rail can carry on straight from a
+-- wall. A ball riding a rail is thrown off it by a corner, so rails a ball follows are
+-- curves.
+local function smooth(points)
+	local function lerp(a, b, ta, tb, t)
+		local u, v = (tb - t) / (tb - ta), (t - ta) / (tb - ta)
+		return { a[1] * u + b[1] * v, a[2] * u + b[2] * v }
+	end
+	local function knot(t, a, b)
+		return t + math.sqrt(math.sqrt((b[1] - a[1]) ^ 2 + (b[2] - a[2]) ^ 2))
+	end
+	local out = { points[2] }
+	for i = 2, #points - 2 do
+		local p0, p1, p2, p3 = points[i - 1], points[i], points[i + 1], points[i + 2]
+		local t0 = 0
+		local t1 = knot(t0, p0, p1)
+		local t2 = knot(t1, p1, p2)
+		local t3 = knot(t2, p2, p3)
+		local n = math.max(2, math.ceil(math.sqrt((p2[1] - p1[1]) ^ 2 + (p2[2] - p1[2]) ^ 2) / 0.35))
+		for k = 1, n do
+			local t = t1 + (t2 - t1) * k / n
+			local a1, a2, a3 = lerp(p0, p1, t0, t1, t), lerp(p1, p2, t1, t2, t), lerp(p2, p3, t2, t3, t)
+			out[#out + 1] = lerp(lerp(a1, a2, t0, t2, t), lerp(a2, a3, t1, t3, t), t1, t2, t)
+		end
+	end
+	return out
+end
+
 local walls = {}
-for i = 1, #arch - 1 do walls[#walls + 1] = { arch[i][1], arch[i][2], arch[i + 1][1], arch[i + 1][2] } end
+local function polyline(points)
+	for i = 1, #points - 1 do
+		walls[#walls + 1] = { points[i][1], points[i][2], points[i + 1][1], points[i + 1][2] }
+	end
+end
+
+-- the outer rail, from the left side over the top and down the side of the shooter
+-- lane to the plunger. A ball kicked up the grotto lane rides it round to the top
+-- lanes, and a launch rides it the other way.
+polyline(smooth({ { 0.45, 10.0 }, { 0.45, 9.2 }, { 0.55, 8.4 }, { 0.8, 7.6 }, { 1.15, 6.9 }, { 1.6, 6.25 }, { 2.1, 5.65 },
+	{ 2.6, 5.05 }, { 3.0, 4.6 }, { 5.0, 2.8 }, { 7.0, 1.75 }, { 10.0, 1.1 }, { 13.0, 1.55 }, { 15.0, 2.6 },
+	{ 17.0, 4.2 }, { 18.6, 6.3 }, { 19.6, 8.8 }, { W - 0.25, 11.0 }, { W - 0.25, 12.0 } }))
+walls[#walls + 1] = { W - 0.25, 11.0, W - 0.25, L - 0.1 }
 
 local more = {
-	-- the left side of the table, and the shooter lane's wall
-	{ 0.45, 9.2, 0.45, 33.0 }, { LANE, 9.4, LANE, 33.0 },
+	-- the left side of the table, and the shooter lane's wall, down to the plunger
+	{ 0.45, 9.2, 0.45, 33.0 }, { LANE, 9.4, LANE, L - 0.1 },
 	-- top lanes: four lanes between plastic dividers, each with a post at either end. The
 	-- leftmost divider is the edge of the triangular plastic beside the grotto passage.
 	{ 5.15, 5.0, 5.15, 7.05 },
@@ -63,12 +100,10 @@ local more = {
 	{ 13.2, 12.2, 14.15, 11.55 }, { 14.15, 11.55, 14.15, 9.7 }, { 14.15, 9.7, 16.05, 11.0 },
 	{ 13.2, 12.2, 13.65, 12.6 }, { 15.45, 18.1, 16.05, 17.9 }, { 15.0, 18.2, 15.45, 18.1 }, { 16.05, 11.0, 16.05, 17.9 },
 	-- the plastic at the foot of the right lane: a guide curving down off the lane wall, a
-	-- rubber with no switch behind it carrying on down, and the plastic's foot, high
-	-- enough that a ball can roll in under it to the right inlane and outlane. A ball
-	-- coming down the right lane rolls along the guide and the rubber, out towards the
-	-- flippers.
-	{ LANE, 18.1, 17.95, 18.8 }, { 17.95, 18.8, 17.82, 19.5 }, { 17.82, 19.5, 17.5, 20.2 },
-	{ 17.5, 20.2, 17.2, 20.9 }, { 17.2, 20.9, 16.7, 21.95 }, { 16.7, 21.95, 15.45, 25.2 },
+	-- rubber with no switch behind it carrying on down (both drawn as one curve, below),
+	-- and here the plastic's foot, high enough that a ball can roll in under it to the
+	-- right inlane and outlane. A ball coming down the right lane rolls along the guide
+	-- and the rubber, out towards the flippers.
 	{ 15.45, 25.2, 15.6, 25.55 }, { 15.6, 25.55, LANE, 25.55 },
 	-- outlane and inlane dividers, level with the tops of the slingshots
 	{ 1.9, 28.0, 1.9, 31.5 }, { 16.4, 28.0, 16.4, 31.5 },
@@ -84,6 +119,9 @@ local more = {
 	{ 0.45, 33.0, 8.0, 39.4 }, { LANE, 33.0, 10.3, 39.4 },
 }
 for _, s in ipairs(more) do walls[#walls + 1] = s end
+-- the right lane's guide, leaving the lane wall without a corner
+polyline(smooth({ { LANE, 17.4 }, { LANE, 18.1 }, { 17.95, 18.8 }, { 17.82, 19.5 }, { 17.5, 20.2 }, { 17.2, 20.9 },
+	{ 16.7, 21.95 }, { 15.45, 25.2 }, { 14.97, 26.45 } }))
 
 -- the island under the top right plastic. Its outer edge is the shooter lane's guide. Its
 -- underside is a ball guide, a quarter arc down onto the right lane's wall, which turns a
