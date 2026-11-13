@@ -237,9 +237,10 @@ local t = {
 
 	-- the kickback holds the ball until Sol 8 fires it back up the lane. The ROM takes its
 	-- time, scoring the grotto first, so the plugin only kicks the ball out itself, at full
-	-- strength, after long enough that the ROM is plainly not going to
+	-- strength, after long enough that the ROM is plainly not going to. It sits in the
+	-- middle of the grotto lane, which runs from the left wall at 0.45 to 2.05.
 	saucers = {
-		{ 1.0, 18.05, 0.7, name = 'Kickback Grotto', switch = { ':X3', 0x80 }, solenoid = 'solenoid7',
+		{ 1.25, 18.05, 0.7, name = 'Kickback Grotto', switch = { ':X3', 0x80 }, solenoid = 'solenoid7',
 		  kick = { 0, -60 }, timeout = 30, timeout_kick = { 0, -60 } },
 	},
 
